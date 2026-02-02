@@ -193,3 +193,200 @@ def calculate_recent_training_fatigue_v2(
         total_fatigue += day_fatigue * max(0.25, decay)
 
     return min(30.0, total_fatigue)  # Cap at 30 (reduced from 40)
+
+
+def get_readiness_category_v2(score: int) -> str:
+    """Get readiness category with updated V2 thresholds."""
+    if score >= 80:
+        return "high"
+    elif score >= 65:
+        return "moderate"
+    elif score >= 50:
+        return "low"
+    elif score >= 35:
+        return "recovery"
+    else:
+        return "rest"
+
+
+def calculate_readiness_v2(
+    hrv_today: Optional[float],
+    hrv_7day_avg: Optional[float],
+    sleep_hours: Optional[float],
+    sleep_target: float,
+    sleep_score: Optional[int],
+    sleep_hours_3_days: List[float],
+    body_battery_morning: Optional[int],
+    recent_activities: List[Dict[str, Any]],
+    avg_readiness_3_days: float,
+    today: datetime,
+    acwr: float,
+    days_to_next_event: Optional[int] = None,
+    next_event_priority: str = "C",
+) -> Dict[str, Any]:
+    """
+    Calculate readiness score using V2 algorithm.
+
+    V2 Formula:
+    BASE 70 + HRV(±15) + Sleep(±20) + SleepTrend(±10) + BodyBattery(±10)
+    - Fatigue(0-30) - ACWR(0-25) + Trend(±5) + Event(±10)
+    """
+    score = 70.0  # BASE_SCORE
+    factors = []
+
+    # HRV Component (±15)
+    if hrv_today is not None and hrv_7day_avg is not None and hrv_7day_avg > 0:
+        hrv_deviation = (hrv_today - hrv_7day_avg) / hrv_7day_avg
+        hrv_component = max(-15.0, min(15.0, hrv_deviation * 75))
+        score += hrv_component
+        factors.append(
+            {
+                "name": "HRV",
+                "value": f"{hrv_component:+.0f}",
+                "detail": f"{hrv_today:.0f}ms vs {hrv_7day_avg:.0f}ms baseline",
+                "status": "positive"
+                if hrv_component > 0
+                else "negative"
+                if hrv_component < 0
+                else "neutral",
+            }
+        )
+
+    # Sleep Component (±20)
+    if sleep_hours is not None:
+        sleep_ratio = sleep_hours / sleep_target if sleep_target > 0 else 1
+        sleep_component = max(-20.0, min(20.0, (sleep_ratio - 1) * 40))
+
+        if sleep_score is not None:
+            if sleep_score >= 80:
+                sleep_component += 3
+            elif sleep_score < 50:
+                sleep_component -= 5
+
+        score += sleep_component
+        factors.append(
+            {
+                "name": "Sleep",
+                "value": f"{sleep_component:+.0f}",
+                "detail": f"{sleep_hours:.1f}h vs {sleep_target:.1f}h target",
+                "status": "positive"
+                if sleep_component > 0
+                else "negative"
+                if sleep_component < 0
+                else "neutral",
+            }
+        )
+
+    # Sleep Trend Component (±10) - NEW in V2
+    if len(sleep_hours_3_days) >= 3:
+        sleep_trend = calculate_sleep_trend_component(sleep_hours_3_days, sleep_target)
+        if sleep_trend != 0:
+            score += sleep_trend
+            factors.append(
+                {
+                    "name": "Sleep Trend",
+                    "value": f"{sleep_trend:+.0f}",
+                    "detail": f"{sum(sleep_hours_3_days) - sleep_target * 3:.1f}h vs target over 3 days",
+                    "status": "positive" if sleep_trend > 0 else "negative",
+                }
+            )
+
+    # Body Battery Component (±10)
+    if body_battery_morning is not None:
+        bb_deviation = (body_battery_morning - 70) / 30
+        bb_component = max(-10.0, min(10.0, bb_deviation * 10))
+        score += bb_component
+        factors.append(
+            {
+                "name": "Body Battery",
+                "value": f"{bb_component:+.0f}",
+                "detail": f"{body_battery_morning} morning reading",
+                "status": "positive"
+                if bb_component > 0
+                else "negative"
+                if bb_component < 0
+                else "neutral",
+            }
+        )
+
+    # Recent Training Fatigue (0-30) - Updated in V2 (was 0-40)
+    recent_fatigue = calculate_recent_training_fatigue_v2(recent_activities, today)
+    if recent_fatigue > 0:
+        score -= recent_fatigue
+        factors.append(
+            {
+                "name": "Recent Training",
+                "value": f"-{recent_fatigue:.0f}",
+                "detail": f"Fatigue from last 5 days",
+                "status": "negative",
+            }
+        )
+
+    # ACWR Penalty (0-25) - NEW in V2
+    acwr_penalty = calculate_acwr_penalty(acwr)
+    if acwr_penalty > 0:
+        score -= acwr_penalty
+        acwr_status = get_acwr_status(acwr)
+        factors.append(
+            {
+                "name": "ACWR",
+                "value": f"-{acwr_penalty:.0f}",
+                "detail": f"{acwr:.2f} ratio ({acwr_status})",
+                "status": "negative" if acwr_penalty > 5 else "warning",
+            }
+        )
+
+    # Trend Adjustment (±5)
+    if avg_readiness_3_days < 50:
+        score -= 5
+        factors.append(
+            {
+                "name": "Trend",
+                "value": "-5",
+                "detail": "Low recent readiness",
+                "status": "negative",
+            }
+        )
+    elif avg_readiness_3_days > 75:
+        score += 3
+        factors.append(
+            {
+                "name": "Trend",
+                "value": "+3",
+                "detail": "High recent readiness",
+                "status": "positive",
+            }
+        )
+
+    event_modifier = calculate_event_proximity_modifier(
+        days_to_next_event, next_event_priority
+    )
+    if event_modifier != 0:
+        score += event_modifier
+        factors.append(
+            {
+                "name": "Event Proximity",
+                "value": f"{event_modifier:+.0f}",
+                "detail": f"{days_to_next_event} days to {next_event_priority}-race"
+                if days_to_next_event
+                else "No upcoming event",
+                "status": "positive" if event_modifier > 0 else "warning",
+            }
+        )
+    if event_modifier != 0:
+        score += event_modifier
+        factors.append(
+            {
+                "name": "Event Proximity",
+                "value": f"{event_modifier:+.0f}",
+                "detail": f"{days_to_next_event} days to {next_event_priority}-race"
+                if days_to_next_event
+                else "No upcoming event",
+                "status": "positive" if event_modifier > 0 else "warning",
+            }
+        )
+
+    score = int(max(0.0, min(100.0, score)))
+    category = get_readiness_category_v2(score)
+
+    return {"score": score, "category": category, "factors": factors}

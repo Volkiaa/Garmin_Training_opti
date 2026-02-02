@@ -38,7 +38,12 @@ app.add_middleware(
 
 
 @app.get("/api/v1/dashboard", response_model=Dashboard)
-async def get_dashboard(db: AsyncSession = Depends(get_db)):
+async def get_dashboard(
+    version: Optional[str] = Query(
+        None, description="Readiness algorithm version: v1 or v2"
+    ),
+    db: AsyncSession = Depends(get_db),
+):
     today = date.today()
     metrics_service = MetricsService(db)
     activity_service = ActivityService(db)
@@ -103,10 +108,14 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)):
         for a in recent_activities[:5]
     ]
 
-    readiness_factors = metrics.readiness_factors or []
-
     from app.core.fatigue import generate_guidance
     from app.core.sport_readiness import evaluate_sport_readiness
+    from app.core.readiness import calculate_readiness, get_readiness_category
+    from app.core.readiness_v2 import (
+        calculate_readiness_v2,
+        calculate_acwr_penalty,
+        get_acwr_status,
+    )
 
     fatigue = {
         "upper": float(metrics.fatigue_upper or 0),
@@ -116,8 +125,47 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)):
     }
     guidance = generate_guidance(fatigue)
 
+    # Get health data for readiness calculation
+    hrv_today = health.hrv_status if health else None
+    hrv_7day_avg = health.hrv_7day_avg if health else settings.hrv_baseline
+    sleep_hours = health.sleep_duration_hours if health else None
+    sleep_score = health.sleep_score if health else None
+    body_battery = health.body_battery_morning if health else None
+
+    # Get recent activities for readiness calculation
+    recent_for_readiness = []
+    for a in recent_activities_data:
+        if a.get("started_at"):
+            activity_date = datetime.fromisoformat(
+                a["started_at"].replace("Z", "+00:00")
+            )
+            if (datetime.now() - activity_date).days <= 5:
+                recent_for_readiness.append(a)
+
+    # Calculate readiness based on version
+    if version == "v1":
+        readiness_result = calculate_readiness(
+            hrv_today=hrv_today,
+            hrv_7day_avg=hrv_7day_avg,
+            sleep_hours=sleep_hours,
+            sleep_target=settings.sleep_target_hours,
+            sleep_score=sleep_score,
+            body_battery_morning=body_battery,
+            recent_activities=recent_for_readiness,
+            avg_readiness_3_days=70,
+            today=datetime.now(),
+        )
+        readiness_score = readiness_result["score"]
+        readiness_category = readiness_result["category"]
+        readiness_factors = readiness_result["factors"]
+    else:
+        # Default to V2
+        readiness_score = metrics.readiness_score or 70
+        readiness_category = "moderate"
+        readiness_factors = metrics.readiness_factors or []
+
     sport_readiness = evaluate_sport_readiness(
-        readiness_score=int(metrics.readiness_score or 70),
+        readiness_score=int(readiness_score),
         fatigue=fatigue,
         acwr=float(metrics.acwr or 1.0),
     )
@@ -125,8 +173,8 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)):
     return {
         "date": today,
         "readiness": {
-            "score": metrics.readiness_score or 70,
-            "category": "moderate",
+            "score": readiness_score,
+            "category": readiness_category,
             "trend": "stable",
             "factors": readiness_factors,
             "guidance": guidance,
