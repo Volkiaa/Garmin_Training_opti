@@ -1,4 +1,6 @@
 .env
+.sisyphus
+.sisyphus/
 .env.local
 .env.*.local
 .garmin_tokens/

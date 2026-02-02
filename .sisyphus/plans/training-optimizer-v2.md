@@ -38,6 +38,62 @@
 
 ---
 
+## Execution Checklist
+
+### Wave 0: Prerequisites (Day 1-2)
+- [x] 0.1 Investigate body battery API - Check Garmin API response for Enduro 3
+- [x] 0.2 Fix body battery extraction - Update `garmin_sync.py` to correctly extract morning reading
+- [x] 0.3 Test body battery sync - Verify data appears in `daily_health` table
+
+### Wave 1: Foundation (Week 1)
+- [ ] 1.1 Create events table migration
+- [ ] 1.2 Create training_phases table migration
+- [ ] 1.3 Create weekly_metrics table migration
+- [ ] 1.4 Extend computed_metrics (add algorithm_version)
+- [ ] 1.5 Implement Event model
+- [ ] 1.6 Implement TrainingPhase model
+- [ ] 1.7 Run migrations
+
+### Wave 2: Core Algorithms (Week 1-2)
+- [ ] 2.1 Implement EWMA helper function
+- [ ] 2.2 Implement ACWR with EWMA (28d window, 7d decay)
+- [ ] 2.3 Implement sleep trend component
+- [ ] 2.4 Implement event proximity modifier
+- [ ] 2.5 Update fatigue calculation (5-day window)
+- [ ] 2.6 Integrate into readiness_v2
+- [ ] 2.7 Implement V1 readiness (keep for comparison)
+- [ ] 2.8 Implement sport requirements config
+- [ ] 2.9 Implement evaluate_sport_readiness
+- [ ] 2.10 Unit tests for algorithms
+
+### Wave 3: Events and Phases (Week 2)
+- [ ] 3.1 Implement Events CRUD API
+- [ ] 3.2 Implement phase detection logic
+- [ ] 3.3 Implement phase auto-generation
+- [ ] 3.4 Add event queries to dashboard service
+- [ ] 3.5 Unit tests for events/phases
+
+### Wave 4: Trends (Week 3-4)
+- [ ] 4.1 Implement weekly aggregation service (Monday-start)
+- [ ] 4.2 Implement trends API endpoints
+- [ ] 4.3 Create weekly aggregation cron job (daily 00:05 UTC)
+- [ ] 4.4 Implement 12-week backfill on first run
+- [ ] 4.5 Implement period comparison logic
+- [ ] 4.6 Unit tests for trends
+
+### Wave 5: Frontend (Week 3-5)
+- [ ] 5.1 Create EventList component
+- [ ] 5.2 Create EventForm component
+- [ ] 5.3 Create SportReadinessGrid
+- [ ] 5.4 Create PhaseIndicator
+- [ ] 5.5 Create Trends page with charts
+- [ ] 5.6 Create V1/V2 ReadinessToggle component
+- [ ] 5.7 Enhance Dashboard with new components
+- [ ] 5.8 Add feature flag for V1/V2 toggle (2-week expiry)
+- [ ] 5.9 E2E tests
+
+---
+
 ## 1. Architecture Overview
 
 ### Component Integration Diagram

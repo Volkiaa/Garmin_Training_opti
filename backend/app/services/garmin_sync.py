@@ -292,8 +292,12 @@ class GarminSyncService:
             "rem_sleep_minutes": (sleep_dto.get("remSleepSeconds", 0) / 60)
             if sleep_dto and sleep_dto.get("remSleepSeconds")
             else None,
-            "body_battery_morning": None,
-            "body_battery_evening": None,
+            "body_battery_morning": stats.get("bodyBatteryAtWakeTime")
+            if isinstance(stats, dict)
+            else None,
+            "body_battery_evening": stats.get("bodyBatteryMostRecentValue")
+            if isinstance(stats, dict)
+            else None,
             "stress_avg": stress_data.get("avgStressLevel")
             if isinstance(stress_data, dict)
             else None,
