@@ -660,3 +660,21 @@ async def compare_periods(
         period1_start, period1_end, period2_start, period2_end
     )
     return comparison
+
+
+@app.get("/api/v1/features")
+async def get_features(db: AsyncSession = Depends(get_db)):
+    from app.services.feature_flag_service import FeatureFlagService
+
+    service = FeatureFlagService(db)
+    features = await service.get_all_features()
+    return {"features": features}
+
+
+@app.post("/api/v1/features/{feature_name}/use")
+async def record_feature_use(feature_name: str, db: AsyncSession = Depends(get_db)):
+    from app.services.feature_flag_service import FeatureFlagService
+
+    service = FeatureFlagService(db)
+    status = await service.record_feature_use(feature_name)
+    return status
