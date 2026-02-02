@@ -123,5 +123,51 @@ class UserSettings(Base):
     disciplines_enabled = Column(ARRAY(String), default=list)
     weekly_volume_targets = Column(JSON, default=dict)
     fatigue_decay_rates = Column(JSON, default=dict)
+    override_garmin = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class Event(Base):
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    event_date = Column(Date, nullable=False, index=True)
+    event_type = Column(String(50), nullable=False)
+    distance = Column(String(50), nullable=True)
+    priority = Column(String(1), default="B", nullable=False)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class TrainingPhase(Base):
+    __tablename__ = "training_phases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    phase_type = Column(String(50), nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    target_event_id = Column(Integer, nullable=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class WeeklyMetrics(Base):
+    __tablename__ = "weekly_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    week_start = Column(Date, nullable=False, unique=True)
+    week_end = Column(Date, nullable=False)
+    total_volume_hours = Column(Float)
+    total_load = Column(Float)
+    volume_by_discipline = Column(JSON)
+    intensity_distribution = Column(JSON)
+    avg_readiness = Column(Float)
+    avg_hrv = Column(Float)
+    avg_sleep_hours = Column(Float)
+    avg_acwr = Column(Float)
+    activity_count = Column(Integer)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

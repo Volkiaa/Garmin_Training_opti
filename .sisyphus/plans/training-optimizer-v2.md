@@ -46,13 +46,13 @@
 - [x] 0.3 Test body battery sync - Verify data appears in `daily_health` table
 
 ### Wave 1: Foundation (Week 1)
-- [ ] 1.1 Create events table migration
-- [ ] 1.2 Create training_phases table migration
-- [ ] 1.3 Create weekly_metrics table migration
-- [ ] 1.4 Extend computed_metrics (add algorithm_version)
-- [ ] 1.5 Implement Event model
-- [ ] 1.6 Implement TrainingPhase model
-- [ ] 1.7 Run migrations
+- [x] 1.1 Create events table migration
+- [x] 1.2 Create training_phases table migration
+- [x] 1.3 Create weekly_metrics table migration
+- [x] 1.4 Extend computed_metrics (add algorithm_version, sport_specific, acwr_penalty, sleep_trend, event_modifier)
+- [x] 1.5 Implement Event model
+- [x] 1.6 Implement TrainingPhase and WeeklyMetrics models
+- [x] 1.7 Run migrations
 
 ### Wave 2: Core Algorithms (Week 1-2)
 - [ ] 2.1 Implement EWMA helper function
