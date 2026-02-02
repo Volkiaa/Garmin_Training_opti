@@ -61,25 +61,25 @@
 - [x] 2.4 Implement event proximity modifier
 - [x] 2.5 Update fatigue calculation (5-day window)
 - [x] 2.6 Integrate into readiness_v2 + extend ComputedMetrics model
-- [ ] 2.7 Implement V1 readiness (keep for comparison)
+- [x] 2.7 Implement V1 readiness (keep for comparison)
 - [x] 2.8 Implement sport requirements config
 - [x] 2.9 Implement evaluate_sport_readiness
-- [ ] 2.10 Unit tests for algorithms
+- [x] 2.10 Unit tests for algorithms
 
 ### Wave 3: Events and Phases (Week 2)
 - [x] 3.1 Implement Events CRUD API
 - [x] 3.2 Implement phase detection logic
 - [x] 3.3 Implement phase auto-generation
 - [x] 3.4 Add event queries to dashboard service
-- [ ] 3.5 Unit tests for events/phases
+- [x] 3.5 Unit tests for events/phases
 
 ### Wave 4: Trends (Week 3-4)
 - [x] 4.1 Implement weekly aggregation service (Monday-start)
 - [x] 4.2 Implement trends API endpoints
 - [x] 4.3 Create weekly aggregation cron job (daily 00:05 UTC)
 - [x] 4.4 Implement 12-week backfill on first run
-- [ ] 4.5 Implement period comparison logic
-- [ ] 4.6 Unit tests for trends
+- [x] 4.5 Implement period comparison logic
+- [x] 4.6 Unit tests for trends
 
 ### Wave 5: Frontend (Week 3-5)
 - [x] 5.1 Create EventList component
@@ -87,10 +87,10 @@
 - [x] 5.3 Create SportReadinessGrid
 - [x] 5.4 Create PhaseIndicator
 - [x] 5.5 Create Trends page with charts
-- [ ] 5.6 Create V1/V2 ReadinessToggle component
+- [x] 5.6 Create V1/V2 ReadinessToggle component
 - [x] 5.7 Enhance Dashboard with new components
-- [ ] 5.8 Add feature flag for V1/V2 toggle (2-week expiry)
-- [ ] 5.9 E2E tests
+- [x] 5.8 Add feature flag for V1/V2 toggle (2-week expiry)
+- [x] 5.9 E2E tests
 
 ---
 
