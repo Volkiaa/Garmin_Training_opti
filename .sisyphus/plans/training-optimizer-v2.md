@@ -86,9 +86,9 @@
 - [x] 5.2 Create EventForm component
 - [x] 5.3 Create SportReadinessGrid
 - [x] 5.4 Create PhaseIndicator
-- [ ] 5.5 Create Trends page with charts
+- [x] 5.5 Create Trends page with charts
 - [ ] 5.6 Create V1/V2 ReadinessToggle component
-- [ ] 5.7 Enhance Dashboard with new components
+- [x] 5.7 Enhance Dashboard with new components
 - [ ] 5.8 Add feature flag for V1/V2 toggle (2-week expiry)
 - [ ] 5.9 E2E tests
 

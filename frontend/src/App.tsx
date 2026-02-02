@@ -1,10 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { LayoutDashboard, Calendar, TrendingUp, Settings as SettingsIcon, Activity } from 'lucide-react';
+import { LayoutDashboard, Calendar, TrendingUp, Settings as SettingsIcon, Activity, Trophy } from 'lucide-react';
 import { Dashboard } from './pages/Dashboard';
 import { Activities } from './pages/Activities';
 import { Settings } from './pages/Settings';
+import { Events } from './pages/Events';
+import { Trends } from './pages/Trends';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,7 +21,7 @@ function Navigation() {
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/activities', icon: Activity, label: 'Activities' },
-    { to: '/calendar', icon: Calendar, label: 'Calendar' },
+    { to: '/events', icon: Trophy, label: 'Events' },
     { to: '/trends', icon: TrendingUp, label: 'Trends' },
     { to: '/settings', icon: SettingsIcon, label: 'Settings' },
   ];
@@ -68,8 +70,8 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/activities" element={<Activities />} />
-              <Route path="/calendar" element={<PlaceholderPage title="Calendar" />} />
-              <Route path="/trends" element={<PlaceholderPage title="Trends" />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/trends" element={<Trends />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
           </main>
