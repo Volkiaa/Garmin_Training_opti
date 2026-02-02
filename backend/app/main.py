@@ -643,3 +643,20 @@ async def trigger_aggregation(db: AsyncSession = Depends(get_db)):
         "aggregated": len(results),
         "weeks": [r.week_start.isoformat() for r in results],
     }
+
+
+@app.get("/api/v1/trends/comparison")
+async def compare_periods(
+    period1_start: date,
+    period1_end: date,
+    period2_start: date,
+    period2_end: date,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.trends_service import TrendsService
+
+    service = TrendsService(db)
+    comparison = await service.compare_periods(
+        period1_start, period1_end, period2_start, period2_end
+    )
+    return comparison

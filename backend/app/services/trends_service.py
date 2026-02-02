@@ -201,6 +201,80 @@ class TrendsService:
             for m in metrics
         ]
 
+    async def compare_periods(
+        self,
+        period1_start: date,
+        period1_end: date,
+        period2_start: date,
+        period2_end: date,
+    ) -> Dict[str, Any]:
+        """Compare metrics between two periods."""
+
+        async def get_period_metrics(start: date, end: date) -> Dict[str, float]:
+            result = await self.db.execute(
+                select(ComputedMetrics).where(
+                    and_(
+                        ComputedMetrics.date >= start,
+                        ComputedMetrics.date <= end,
+                    )
+                )
+            )
+            metrics = result.scalars().all()
+
+            if not metrics:
+                return {
+                    "avg_readiness": 0,
+                    "avg_acwr": 0,
+                    "avg_hrv": 0,
+                    "avg_sleep": 0,
+                    "total_load": 0,
+                    "days_count": 0,
+                }
+
+            return {
+                "avg_readiness": sum(m.readiness_score or 0 for m in metrics)
+                / len(metrics),
+                "avg_acwr": sum(m.acwr or 1.0 for m in metrics) / len(metrics),
+                "avg_hrv": sum(m.hrv_status or 0 for m in metrics) / len(metrics),
+                "avg_sleep": sum(m.sleep_duration_hours or 0 for m in metrics)
+                / len(metrics),
+                "total_load": sum(m.acute_load or 0 for m in metrics),
+                "days_count": len(metrics),
+            }
+
+        period1 = await get_period_metrics(period1_start, period1_end)
+        period2 = await get_period_metrics(period2_start, period2_end)
+
+        def calc_delta(p1: float, p2: float) -> Dict[str, Any]:
+            if p2 == 0:
+                return {"absolute": p1 - p2, "percent": 0}
+            return {
+                "absolute": round(p1 - p2, 2),
+                "percent": round((p1 - p2) / p2 * 100, 1),
+            }
+
+        return {
+            "period1": {
+                "start": period1_start.isoformat(),
+                "end": period1_end.isoformat(),
+                "metrics": period1,
+            },
+            "period2": {
+                "start": period2_start.isoformat(),
+                "end": period2_end.isoformat(),
+                "metrics": period2,
+            },
+            "delta": {
+                "readiness": calc_delta(
+                    period1["avg_readiness"], period2["avg_readiness"]
+                ),
+                "acwr": calc_delta(period1["avg_acwr"], period2["avg_acwr"]),
+                "hrv": calc_delta(period1["avg_hrv"], period2["avg_hrv"]),
+                "sleep": calc_delta(period1["avg_sleep"], period2["avg_sleep"]),
+                "load": calc_delta(period1["total_load"], period2["total_load"]),
+            },
+        }
+
     async def get_daily_trends(
         self, start_date: date, end_date: date
     ) -> List[Dict[str, Any]]:
