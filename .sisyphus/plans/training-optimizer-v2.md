@@ -67,10 +67,10 @@
 - [ ] 2.10 Unit tests for algorithms
 
 ### Wave 3: Events and Phases (Week 2)
-- [ ] 3.1 Implement Events CRUD API
-- [ ] 3.2 Implement phase detection logic
-- [ ] 3.3 Implement phase auto-generation
-- [ ] 3.4 Add event queries to dashboard service
+- [x] 3.1 Implement Events CRUD API
+- [x] 3.2 Implement phase detection logic
+- [x] 3.3 Implement phase auto-generation
+- [x] 3.4 Add event queries to dashboard service
 - [ ] 3.5 Unit tests for events/phases
 
 ### Wave 4: Trends (Week 3-4)

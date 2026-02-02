@@ -459,3 +459,99 @@ async def update_settings(update: SettingsUpdate, db: AsyncSession = Depends(get
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+@app.get("/api/v1/events")
+async def list_events(upcoming_only: bool = False, db: AsyncSession = Depends(get_db)):
+    from app.services.event_service import EventService
+
+    service = EventService(db)
+    events = await service.list_events(upcoming_only=upcoming_only)
+    return events
+
+
+@app.post("/api/v1/events")
+async def create_event(
+    name: str,
+    event_date: date,
+    event_type: str,
+    distance: Optional[str] = None,
+    priority: str = "B",
+    notes: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.event_service import EventService
+    from app.services.phase_service import PhaseService
+
+    event_service = EventService(db)
+    phase_service = PhaseService(db)
+
+    event = await event_service.create_event(
+        name=name,
+        event_date=event_date,
+        event_type=event_type,
+        distance=distance,
+        priority=priority,
+        notes=notes,
+    )
+
+    await phase_service.create_phases_for_event(event.id)
+
+    return event
+
+
+@app.put("/api/v1/events/{event_id}")
+async def update_event(
+    event_id: int,
+    name: Optional[str] = None,
+    event_date: Optional[date] = None,
+    event_type: Optional[str] = None,
+    distance: Optional[str] = None,
+    priority: Optional[str] = None,
+    notes: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.event_service import EventService
+
+    service = EventService(db)
+
+    event = await service.update_event(
+        event_id=event_id,
+        name=name,
+        event_date=event_date,
+        event_type=event_type,
+        distance=distance,
+        priority=priority,
+        notes=notes,
+    )
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    return event
+
+
+@app.delete("/api/v1/events/{event_id}")
+async def delete_event(event_id: int, db: AsyncSession = Depends(get_db)):
+    from app.services.event_service import EventService
+    from app.services.phase_service import PhaseService
+
+    phase_service = PhaseService(db)
+    await phase_service.delete_phases_for_event(event_id)
+
+    event_service = EventService(db)
+    deleted = await event_service.delete_event(event_id)
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    return {"deleted": True}
+
+
+@app.get("/api/v1/phases/current")
+async def get_current_phase(db: AsyncSession = Depends(get_db)):
+    from app.services.phase_service import PhaseService
+
+    service = PhaseService(db)
+    phase = await service.get_current_phase()
+    return phase
