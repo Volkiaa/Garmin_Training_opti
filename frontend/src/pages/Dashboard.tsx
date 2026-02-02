@@ -3,12 +3,17 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useDashboard } from '../hooks/useDashboard';
+import { useReadinessVersion } from '../hooks/useReadinessVersion';
 import { useTriggerSync } from '../hooks/useSync';
 import { getReadinessColor, getReadinessBgColor, formatDuration, formatDate, getDisciplineColor, getDisciplineLabel, getIntensityLabel, getAcwrColor } from '../lib/utils';
 import { Activity, RefreshCw } from 'lucide-react';
+import { ReadinessToggle } from '../components/ReadinessToggle';
+import { SportReadinessGrid } from '../components/SportReadinessGrid';
+import { PhaseIndicator } from '../components/PhaseIndicator';
 
 export function Dashboard() {
-  const { data: dashboard, isLoading, error } = useDashboard();
+  const { version, setReadinessVersion, isLoading: versionLoading } = useReadinessVersion();
+  const { data: dashboard, isLoading, error } = useDashboard(version);
   const triggerSync = useTriggerSync();
 
   if (isLoading) {
@@ -39,8 +44,15 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <PhaseIndicator />
+
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          {!versionLoading && (
+            <ReadinessToggle version={version} onChange={setReadinessVersion} />
+          )}
+        </div>
         <Button
           variant="outline"
           size="sm"
@@ -136,26 +148,30 @@ export function Dashboard() {
         </Card>
       </div>
 
-      <Card>
-        <CardContent>
-          <h2 className="text-sm font-medium text-gray-600 mb-3">Today&apos;s Guidance</h2>
-          <p className="text-lg font-medium text-gray-900 mb-3">{readiness.guidance.recommendation}</p>
-          
-          {readiness.guidance.avoid.length > 0 && (
-            <div className="mb-3">
-              <span className="text-sm text-red-600 font-medium">Avoid:</span>
-              <p className="text-sm text-gray-700">{readiness.guidance.avoid.join(', ')}</p>
-            </div>
-          )}
-          
-          {readiness.guidance.suggested.length > 0 && (
-            <div>
-              <span className="text-sm text-green-600 font-medium">Suggested:</span>
-              <p className="text-sm text-gray-700">{readiness.guidance.suggested.join(', ')}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardContent>
+            <h2 className="text-sm font-medium text-gray-600 mb-3">Today&apos;s Guidance</h2>
+            <p className="text-lg font-medium text-gray-900 mb-3">{readiness.guidance.recommendation}</p>
+            
+            {readiness.guidance.avoid.length > 0 && (
+              <div className="mb-3">
+                <span className="text-sm text-red-600 font-medium">Avoid:</span>
+                <p className="text-sm text-gray-700">{readiness.guidance.avoid.join(', ')}</p>
+              </div>
+            )}
+            
+            {readiness.guidance.suggested.length > 0 && (
+              <div>
+                <span className="text-sm text-green-600 font-medium">Suggested:</span>
+                <p className="text-sm text-gray-700">{readiness.guidance.suggested.join(', ')}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <SportReadinessGrid sportReadiness={readiness.sport_specific || {}} />
+      </div>
 
       <Card>
         <CardContent>

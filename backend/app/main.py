@@ -106,14 +106,21 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)):
     readiness_factors = metrics.readiness_factors or []
 
     from app.core.fatigue import generate_guidance
+    from app.core.sport_readiness import evaluate_sport_readiness
 
     fatigue = {
-        "upper": metrics.fatigue_upper or 0,
-        "lower": metrics.fatigue_lower or 0,
-        "cardio": metrics.fatigue_cardio or 0,
-        "cns": metrics.fatigue_cns or 0,
+        "upper": float(metrics.fatigue_upper or 0),
+        "lower": float(metrics.fatigue_lower or 0),
+        "cardio": float(metrics.fatigue_cardio or 0),
+        "cns": float(metrics.fatigue_cns or 0),
     }
     guidance = generate_guidance(fatigue)
+
+    sport_readiness = evaluate_sport_readiness(
+        readiness_score=int(metrics.readiness_score or 70),
+        fatigue=fatigue,
+        acwr=float(metrics.acwr or 1.0),
+    )
 
     return {
         "date": today,
@@ -123,6 +130,7 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)):
             "trend": "stable",
             "factors": readiness_factors,
             "guidance": guidance,
+            "sport_specific": sport_readiness,
         },
         "training_load": {
             "acute": metrics.acute_load or 0,
