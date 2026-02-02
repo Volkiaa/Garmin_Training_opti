@@ -555,3 +555,35 @@ async def get_current_phase(db: AsyncSession = Depends(get_db)):
     service = PhaseService(db)
     phase = await service.get_current_phase()
     return phase
+
+
+@app.get("/api/v1/trends/weekly")
+async def get_weekly_trends(weeks: int = 12, db: AsyncSession = Depends(get_db)):
+    from app.services.trends_service import TrendsService
+
+    service = TrendsService(db)
+    trends = await service.get_weekly_trends(weeks=weeks)
+    return {"weeks": trends}
+
+
+@app.get("/api/v1/trends/daily")
+async def get_daily_trends(
+    start_date: date, end_date: date, db: AsyncSession = Depends(get_db)
+):
+    from app.services.trends_service import TrendsService
+
+    service = TrendsService(db)
+    trends = await service.get_daily_trends(start_date, end_date)
+    return {"days": trends}
+
+
+@app.post("/api/v1/trends/aggregate")
+async def trigger_aggregation(db: AsyncSession = Depends(get_db)):
+    from app.services.trends_service import TrendsService
+
+    service = TrendsService(db)
+    results = await service.backfill_weeks(weeks=12)
+    return {
+        "aggregated": len(results),
+        "weeks": [r.week_start.isoformat() for r in results],
+    }

@@ -74,10 +74,10 @@
 - [ ] 3.5 Unit tests for events/phases
 
 ### Wave 4: Trends (Week 3-4)
-- [ ] 4.1 Implement weekly aggregation service (Monday-start)
-- [ ] 4.2 Implement trends API endpoints
-- [ ] 4.3 Create weekly aggregation cron job (daily 00:05 UTC)
-- [ ] 4.4 Implement 12-week backfill on first run
+- [x] 4.1 Implement weekly aggregation service (Monday-start)
+- [x] 4.2 Implement trends API endpoints
+- [x] 4.3 Create weekly aggregation cron job (daily 00:05 UTC)
+- [x] 4.4 Implement 12-week backfill on first run
 - [ ] 4.5 Implement period comparison logic
 - [ ] 4.6 Unit tests for trends
 
