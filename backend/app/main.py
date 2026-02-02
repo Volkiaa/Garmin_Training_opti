@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional, List
 
 from app.database import get_db
@@ -136,10 +136,16 @@ async def get_dashboard(
     recent_for_readiness = []
     for a in recent_activities_data:
         if a.get("started_at"):
-            activity_date = datetime.fromisoformat(
-                a["started_at"].replace("Z", "+00:00")
-            )
-            if (datetime.now() - activity_date).days <= 5:
+            started_at = a["started_at"]
+            # Handle both string and datetime objects
+            if isinstance(started_at, str):
+                activity_date = datetime.fromisoformat(
+                    started_at.replace("Z", "+00:00")
+                )
+            else:
+                # Already a datetime object
+                activity_date = started_at
+            if (datetime.now(timezone.utc) - activity_date).days <= 5:
                 recent_for_readiness.append(a)
 
     # Calculate readiness based on version
