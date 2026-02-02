@@ -67,7 +67,7 @@ export function PhaseIndicator() {
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">{phaseData.phase_name}</h3>
               {phaseData.weeks_out !== null && (
-                <Badge variant="outline" className="bg-white/50">
+                <Badge variant="default" className="bg-white/50">
                   {phaseData.weeks_out.toFixed(1)} weeks out
                 </Badge>
               )}
@@ -77,7 +77,7 @@ export function PhaseIndicator() {
                 <Calendar className="w-3 h-3" />
                 <span>{phaseData.event.name}</span>
                 <span>•</span>
-                <Badge variant="outline" className="text-xs bg-white/50">
+                <Badge variant="default" className="text-xs bg-white/50">
                   {phaseData.event.priority}-Race
                 </Badge>
               </div>

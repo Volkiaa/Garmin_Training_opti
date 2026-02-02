@@ -13,7 +13,7 @@ export function Settings() {
   const triggerSync = useTriggerSync();
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
-  const { data: garminProfile, isLoading: isLoadingProfile } = useQuery({
+  const { data: garminProfile } = useQuery({
     queryKey: ['garmin-profile'],
     queryFn: syncApi.getGarminProfile,
   });

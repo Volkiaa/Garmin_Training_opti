@@ -1,9 +1,8 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Calendar, Trophy, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
 import { EventForm } from './EventForm';
 
 interface Event {

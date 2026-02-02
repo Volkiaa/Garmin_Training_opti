@@ -1,11 +1,10 @@
-import React from 'react';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useDashboard } from '../hooks/useDashboard';
 import { useReadinessVersion } from '../hooks/useReadinessVersion';
 import { useTriggerSync } from '../hooks/useSync';
-import { getReadinessColor, getReadinessBgColor, formatDuration, formatDate, getDisciplineColor, getDisciplineLabel, getIntensityLabel, getAcwrColor } from '../lib/utils';
+import { getReadinessColor, formatDuration, formatDate, getDisciplineColor, getDisciplineLabel, getIntensityLabel } from '../lib/utils';
 import { Activity, RefreshCw } from 'lucide-react';
 import { ReadinessToggle } from '../components/ReadinessToggle';
 import { SportReadinessGrid } from '../components/SportReadinessGrid';
@@ -40,7 +39,7 @@ export function Dashboard() {
     );
   }
 
-  const { readiness, training_load, fatigue, health, recent_activities, week_summary } = dashboard;
+  const { readiness, training_load, fatigue, recent_activities, week_summary } = dashboard;
 
   return (
     <div className="space-y-6">

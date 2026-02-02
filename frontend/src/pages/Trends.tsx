@@ -84,7 +84,9 @@ export function Trends() {
               <CardContent className="py-4">
                 <p className="text-sm text-gray-600">Avg Readiness</p>
                 <p className="text-2xl font-bold">
-                  {(weeklyData?.reduce((sum, w) => sum + (w.avg_readiness || 0), 0) / (weeklyData?.length || 1)).toFixed(0)}
+                   {weeklyData && weeklyData.length > 0
+                     ? (weeklyData.reduce((sum, w) => sum + (w.avg_readiness || 0), 0) / weeklyData.length).toFixed(0)
+                     : '0'}
                 </p>
               </CardContent>
             </Card>

@@ -1,7 +1,4 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
 import { EventList } from '../components/EventList';
 import { PhaseIndicator } from '../components/PhaseIndicator';
 

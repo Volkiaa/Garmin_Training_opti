@@ -1,7 +1,6 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { LayoutDashboard, Calendar, TrendingUp, Settings as SettingsIcon, Activity, Trophy } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Settings as SettingsIcon, Activity, Trophy } from 'lucide-react';
 import { Dashboard } from './pages/Dashboard';
 import { Activities } from './pages/Activities';
 import { Settings } from './pages/Settings';
@@ -48,15 +47,6 @@ function Navigation() {
         </div>
       </div>
     </nav>
-  );
-}
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="text-center py-12">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">{title}</h1>
-      <p className="text-gray-600">This page is coming soon.</p>
-    </div>
   );
 }
 

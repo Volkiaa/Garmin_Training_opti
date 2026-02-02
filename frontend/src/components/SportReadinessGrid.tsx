@@ -93,9 +93,8 @@ export function SportReadinessGrid({ sportReadiness }: SportReadinessGridProps) 
                 {categorized.caution.map((sport) => (
                   <Badge
                     key={sport}
-                    variant="outline"
+                    variant="warning"
                     className="bg-yellow-50 text-yellow-800 border-yellow-300"
-                    title={sportReadiness[sport]?.blockers?.join(', ')}
                   >
                     {SPORT_DISPLAY_NAMES[sport] || sport}
                   </Badge>
