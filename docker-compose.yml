@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: training-optimizer-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-training_optimizer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-training_optimizer_password}
+      POSTGRES_DB: ${POSTGRES_DB:-training_optimizer}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-training_optimizer}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: training-optimizer-api
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://training_optimizer:training_optimizer_password@postgres:5432/training_optimizer}
+      GARMIN_EMAIL: ${GARMIN_EMAIL}
+      GARMIN_PASSWORD: ${GARMIN_PASSWORD}
+      GARMIN_TOKEN_PATH: ${GARMIN_TOKEN_PATH:-/app/data/.garmin_tokens}
+      SYNC_SCHEDULE_ENABLED: ${SYNC_SCHEDULE_ENABLED:-true}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - garmin_tokens:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
+  garmin_tokens:
