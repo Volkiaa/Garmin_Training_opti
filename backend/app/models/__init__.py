@@ -109,6 +109,11 @@ class ComputedMetrics(Base):
     fatigue_cns = Column(Float)
     weekly_volume_by_discipline = Column(JSON)
     intensity_distribution = Column(JSON)
+    algorithm_version = Column(String(10), default="v1")
+    sport_specific = Column(JSON)
+    acwr_penalty = Column(Float)
+    sleep_trend = Column(Float)
+    event_modifier = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

@@ -55,15 +55,15 @@
 - [x] 1.7 Run migrations
 
 ### Wave 2: Core Algorithms (Week 1-2)
-- [ ] 2.1 Implement EWMA helper function
-- [ ] 2.2 Implement ACWR with EWMA (28d window, 7d decay)
-- [ ] 2.3 Implement sleep trend component
-- [ ] 2.4 Implement event proximity modifier
-- [ ] 2.5 Update fatigue calculation (5-day window)
-- [ ] 2.6 Integrate into readiness_v2
+- [x] 2.1 Implement EWMA helper function
+- [x] 2.2 Implement ACWR with EWMA (28d window, 7d decay)
+- [x] 2.3 Implement sleep trend component
+- [x] 2.4 Implement event proximity modifier
+- [x] 2.5 Update fatigue calculation (5-day window)
+- [x] 2.6 Integrate into readiness_v2 + extend ComputedMetrics model
 - [ ] 2.7 Implement V1 readiness (keep for comparison)
-- [ ] 2.8 Implement sport requirements config
-- [ ] 2.9 Implement evaluate_sport_readiness
+- [x] 2.8 Implement sport requirements config
+- [x] 2.9 Implement evaluate_sport_readiness
 - [ ] 2.10 Unit tests for algorithms
 
 ### Wave 3: Events and Phases (Week 2)
