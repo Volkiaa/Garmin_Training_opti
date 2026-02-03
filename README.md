@@ -76,11 +76,24 @@ docker-compose exec backend python -c "from app.services.garmin_sync import get_
 - `GET /api/v1/dashboard` - Daily dashboard data
 - `GET /api/v1/activities` - List activities with filters
 - `GET /api/v1/activities/{id}` - Activity details
+- `GET /api/v1/activities/{id}/splits` - Fetch activity lap/split data (distance, time, pace, HR, power, elevation)
 - `PATCH /api/v1/activities/{id}` - Update activity classification
 - `GET /api/v1/health/daily` - Daily health metrics
 - `POST /api/v1/sync/trigger` - Trigger Garmin sync
 - `GET /api/v1/settings` - User settings
 - `PATCH /api/v1/settings` - Update settings
+
+### Activity Metrics
+
+Detailed activity responses include these specialized metrics:
+
+| Metric | Unit | Description |
+|--------|------|-------------|
+| `avg_power`, `max_power`, `normalized_power` | Watts | Power data for cycling/running |
+| `avg_speed`, `max_speed` | m/s | Speed data |
+| `avg_cadence`, `max_cadence` | rpm/spm | Leg or arm turnover |
+| `elevation_gain`, `elevation_loss` | Meters | Vertical movement |
+| `aerobic_te`, `anaerobic_te` | 0.0-5.0 | Garmin Training Effect scores |
 
 ## Core Algorithms
 
