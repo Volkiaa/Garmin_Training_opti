@@ -11,6 +11,17 @@ export interface Activity {
   avg_hr: number | null;
   max_hr: number | null;
   calories: number | null;
+  avg_power: number | null;
+  max_power: number | null;
+  normalized_power: number | null;
+  avg_speed: number | null;
+  max_speed: number | null;
+  avg_cadence: number | null;
+  max_cadence: number | null;
+  elevation_gain: number | null;
+  elevation_loss: number | null;
+  aerobic_te: number | null;
+  anaerobic_te: number | null;
   hr_zones: {
     zone1: number;
     zone2: number;
