@@ -9,6 +9,7 @@ from sqlalchemy import (
     ARRAY,
     Enum,
     Text,
+    ForeignKey,
     create_engine,
 )
 from sqlalchemy.sql import func
@@ -207,5 +208,38 @@ class SyncJob(Base):
     error_message = Column(Text, nullable=True)
     triggered_by = Column(String(20), nullable=False)
     next_scheduled_run = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class Workout(Base):
+    """Workout library - reusable workout templates."""
+
+    __tablename__ = "workouts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    discipline = Column(String(50), nullable=False)
+    duration_minutes = Column(Integer, nullable=False)
+    target_intensity = Column(String(20), nullable=False)
+    structure = Column(JSON, nullable=False)
+    tags = Column(ARRAY(String), default=list)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class PlannedWorkout(Base):
+    """Planned workouts on the calendar."""
+
+    __tablename__ = "planned_workouts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    workout_id = Column(Integer, ForeignKey("workouts.id"), nullable=True)
+    planned_date = Column(Date, nullable=False, index=True)
+    planned_time = Column(String(10), nullable=True)
+    status = Column(String(20), default="planned")
+    notes = Column(Text, nullable=True)
+    completed_activity_id = Column(Integer, ForeignKey("activities.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
