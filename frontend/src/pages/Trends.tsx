@@ -20,6 +20,7 @@ import {
   Cell,
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
+import { formatLoad } from '../lib/utils';
 import { fadeInUp, staggerContainer, staggerItem, smoothSpring } from '../lib/animations';
 
 interface WeeklyMetric {
@@ -166,7 +167,7 @@ export function Trends() {
             <TrendingUp className="w-4 h-4 text-emerald-400" />
             <span className="text-sm">Total Load</span>
           </div>
-          <p className="text-2xl font-bold text-white">{totalLoad.toFixed(0)}</p>
+          <p className="text-2xl font-bold text-white">{formatLoad(totalLoad)}</p>
           <p className="text-xs text-gray-500">Training stress</p>
         </MorphingCard>
 
@@ -353,7 +354,7 @@ export function Trends() {
                         {format(parseISO(week.week_start), 'MMM d')}
                       </td>
                       <td className="text-right py-2 text-gray-300">{week.total_volume_hours?.toFixed(1)}h</td>
-                      <td className="text-right py-2 text-gray-300">{week.total_load?.toFixed(0)}</td>
+                      <td className="text-right py-2 text-gray-300">{formatLoad(week.total_load)}</td>
                       <td className="text-right py-2 text-gray-300">{week.activity_count}</td>
                     </tr>
                   ))}

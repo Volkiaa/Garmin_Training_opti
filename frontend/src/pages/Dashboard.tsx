@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useDashboard } from '../hooks/useDashboard';
 import { useReadinessVersion } from '../hooks/useReadinessVersion';
 import { useTriggerSync } from '../hooks/useSync';
-import { formatDuration, formatDate, getDisciplineLabel, getIntensityLabel } from '../lib/utils';
+import { formatDuration, formatDate, formatLoad, getDisciplineLabel, getIntensityLabel } from '../lib/utils';
 import { Activity, RefreshCw, Zap, TrendingUp, Clock } from 'lucide-react';
 import { ReadinessToggle } from '../components/ReadinessToggle';
 import { MorphingCard, FluidButton, ReadinessGauge } from '../components/morphic';
@@ -116,11 +116,11 @@ export function Dashboard() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-3 bg-white/5 rounded-xl">
-                  <p className="text-2xl font-bold text-white">{training_load.acute.toFixed(0)}</p>
+                  <p className="text-2xl font-bold text-white">{formatLoad(training_load.acute)}</p>
                   <p className="text-xs text-gray-400">Acute (7d)</p>
                 </div>
                 <div className="text-center p-3 bg-white/5 rounded-xl">
-                  <p className="text-2xl font-bold text-white">{training_load.chronic.toFixed(0)}</p>
+                  <p className="text-2xl font-bold text-white">{formatLoad(training_load.chronic)}</p>
                   <p className="text-xs text-gray-400">Chronic (28d)</p>
                 </div>
               </div>

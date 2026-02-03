@@ -6,6 +6,7 @@ import { DisciplineFilter } from '../components/DisciplineFilter';
 import {
   formatDate,
   formatDuration,
+  formatLoad,
   getDisciplineLabel,
   getIntensityLabel,
 } from '../lib/utils';
@@ -154,7 +155,7 @@ export function Activities() {
                       <p className="text-xs text-gray-400 mt-1">
                         {formatDuration(activity.duration_minutes)} •{' '}
                         {getIntensityLabel(activity.intensity_zone)}
-                        {activity.training_load && ` • Load: ${activity.training_load}`}
+                        {activity.training_load && ` • Load: ${formatLoad(activity.training_load)}`}
                       </p>
                     </div>
                   </motion.div>
