@@ -25,7 +25,7 @@ class ActivityBase(BaseModel):
     notes: Optional[str] = None
     avg_power: Optional[int] = None
     max_power: Optional[int] = None
-    normalized_power: Optional[int] = None
+    normalized_power: Optional[float] = None
     avg_speed: Optional[float] = None
     max_speed: Optional[float] = None
     avg_cadence: Optional[int] = None
