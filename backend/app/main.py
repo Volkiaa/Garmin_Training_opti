@@ -373,6 +373,47 @@ async def get_activity_gps(activity_id: int, db: AsyncSession = Depends(get_db))
     return {"coordinates": gps_data}
 
 
+@app.get("/api/v1/activities/{activity_id}/hr")
+async def get_activity_hr(activity_id: int, db: AsyncSession = Depends(get_db)):
+    """Get heart rate time-series data for an activity."""
+    from app.services.activity_service import ActivityService
+
+    service = ActivityService(db)
+    activity = await service.get_by_id(activity_id)
+
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    if not activity.raw_data:
+        raise HTTPException(status_code=404, detail="No detailed data available")
+
+    # Extract HR samples from raw_data
+    # Garmin Connect API stores HR in "samples" or "heartRate" field
+    hr_samples = []
+
+    # Try different possible locations in raw_data
+    if "samples" in activity.raw_data:
+        samples = activity.raw_data["samples"]
+        for sample in samples:
+            if "heartRate" in sample or "hr" in sample:
+                hr_samples.append(
+                    {
+                        "timestamp": sample.get("timestamp") or sample.get("time"),
+                        "hr": sample.get("heartRate") or sample.get("hr"),
+                    }
+                )
+    elif "heartRate" in activity.raw_data:
+        # Alternative format
+        hr_data = activity.raw_data["heartRate"]
+        if isinstance(hr_data, list):
+            hr_samples = hr_data
+
+    if not hr_samples:
+        raise HTTPException(status_code=404, detail="Heart rate data not available")
+
+    return {"samples": hr_samples}
+
+
 @app.get("/api/v1/health/daily", response_model=HealthMetricsList)
 async def get_health_daily(
     start_date: date, end_date: date, db: AsyncSession = Depends(get_db)
