@@ -22,7 +22,7 @@ export function useSyncWebSocket() {
   });
   
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
   
@@ -54,7 +54,7 @@ export function useSyncWebSocket() {
         }
       };
       
-      ws.onerror = (error) => {
+      ws.onerror = () => {
         setState(prev => ({ ...prev, error: new Error('WebSocket error') }));
       };
       

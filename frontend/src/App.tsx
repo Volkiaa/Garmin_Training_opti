@@ -1,8 +1,11 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Dashboard } from './pages/Dashboard';
 import { Activities } from './pages/Activities';
+import { ActivityDetail } from './pages/ActivityDetail';
+import { Calendar } from './pages/Calendar';
+import { Onboarding } from './pages/Onboarding';
 import { Settings } from './pages/Settings';
 import { Events } from './pages/Events';
 import { Trends } from './pages/Trends';
@@ -27,7 +30,10 @@ function App() {
             <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/activities" element={<Activities />} />
+                <Route path="/activities/:activity_id" element={<ActivityDetail />} />
+                <Route path="/calendar" element={<Calendar />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/trends" element={<Trends />} />
                 <Route path="/settings" element={<Settings />} />
