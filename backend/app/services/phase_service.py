@@ -44,6 +44,80 @@ PHASE_TEMPLATES = {
 }
 
 
+# Phase recommendations configuration
+PHASE_RECOMMENDATIONS = {
+    "base": {
+        "volume_range": (0.8, 1.0),
+        "intensity_easy": 85,
+        "intensity_hard": 15,
+        "focus": "Build aerobic foundation with easy volume",
+        "sessions": {
+            "hyrox": ["Long run 60-90min Z2", "Strength 2x", "Easy bike 45-60min"],
+            "marathon": ["Long run 90-120min Z2", "Easy runs 4x", "Strength 1x"],
+            "triathlon_half": [
+                "Long bike 90min Z2",
+                "Long run 60min Z2",
+                "Swim technique 2x",
+            ],
+        },
+    },
+    "build": {
+        "volume_range": (0.9, 1.1),
+        "intensity_easy": 80,
+        "intensity_hard": 20,
+        "focus": "Introduce race-specific intensity while maintaining volume",
+        "sessions": {
+            "hyrox": [
+                "Threshold run 2x20min Z4",
+                "HIIT/Functional 1x",
+                "Strength 2x",
+                "Long run 75min",
+            ],
+            "marathon": [
+                "Tempo run 40-50min Z3",
+                "Long run with fast finish",
+                "Intervals 6x1km",
+            ],
+            "triathlon_half": [
+                "Brick workout",
+                "Swim intervals",
+                "Bike intervals 4x8min",
+            ],
+        },
+    },
+    "peak": {
+        "volume_range": (0.85, 1.0),
+        "intensity_easy": 75,
+        "intensity_hard": 25,
+        "focus": "Race-specific sharpening with controlled volume",
+        "sessions": {
+            "hyrox": ["Race simulation", "Short sharp intervals", "Technique work"],
+            "marathon": [
+                "Race pace practice 10-15km",
+                "Short intervals 8x400m",
+                "Easy volume",
+            ],
+            "triathlon_half": [
+                "Race pace brick",
+                "Open water swim",
+                "Transition practice",
+            ],
+        },
+    },
+    "taper": {
+        "volume_range": (0.5, 0.7),
+        "intensity_easy": 70,
+        "intensity_hard": 30,
+        "focus": "Reduce volume, maintain intensity, maximize freshness",
+        "sessions": {
+            "hyrox": ["Short race pace efforts", "Light technique", "Rest"],
+            "marathon": ["Easy runs only", "Few race pace strides", "Rest"],
+            "triathlon_half": ["Short brick", "Easy swim", "Rest and mobility"],
+        },
+    },
+}
+
+
 def get_phase_name(phase_type: str) -> str:
     """Get display name for phase type."""
     names = {
@@ -156,6 +230,27 @@ class PhaseService:
             }
 
         return detect_phase_for_event(next_event, today)
+
+    async def get_phase_recommendations(
+        self, phase_type: str, event_type: str, weekly_volume_target: float = 8.0
+    ) -> dict:
+        """Return training recommendations for current phase"""
+        config = PHASE_RECOMMENDATIONS.get(phase_type, PHASE_RECOMMENDATIONS["base"])
+
+        vol_min, vol_max = config["volume_range"]
+        sessions = config["sessions"].get(
+            event_type, config["sessions"].get("hyrox", [])
+        )
+
+        return {
+            "phase_type": phase_type,
+            "volume_target_min": weekly_volume_target * vol_min,
+            "volume_target_max": weekly_volume_target * vol_max,
+            "intensity_easy_pct": config["intensity_easy"],
+            "intensity_hard_pct": config["intensity_hard"],
+            "focus": config["focus"],
+            "key_sessions": sessions,
+        }
 
     async def create_phases_for_event(self, event_id: int) -> List[TrainingPhase]:
         """Auto-generate and save training phases for an event."""
