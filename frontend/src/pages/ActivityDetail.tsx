@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, Clock, Activity, Zap, Edit2, Save, FileText } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Activity, Zap, Edit2, Save, FileText, Mountain, Timer } from 'lucide-react';
 import { MorphingCard, FluidButton } from '../components/morphic';
 import { staggerContainer, staggerItem } from '../lib/animations';
 import { formatDate, formatDuration, formatLoad, getDisciplineLabel } from '../lib/utils';
@@ -11,6 +11,8 @@ import { ActivityMap } from '../components/ActivityMap';
 import { HRZoneChart } from '../components/HRZoneChart';
 import { FatigueImpact } from '../components/FatigueImpact';
 import { Heart, Activity as ActivityIcon } from 'lucide-react';
+import { ActivityStats } from '../components/ActivityStats';
+import { SplitsTable } from '../components/SplitsTable';
 
 export function ActivityDetail() {
   const { activity_id } = useParams();
@@ -138,7 +140,22 @@ export function ActivityDetail() {
                 <p className="text-sm font-medium text-white">{formatLoad(activity.training_load)}</p>
               </div>
             </div>
+            {activity.elevation_gain && (
+              <div className="flex items-center gap-3">
+                <Mountain className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-xs text-gray-400">Elevation</p>
+                  <p className="text-sm font-medium text-white">{Math.round(activity.elevation_gain)} m</p>
+                </div>
+              </div>
+            )}
           </div>
+        </MorphingCard>
+      </motion.div>
+
+      <motion.div variants={staggerItem}>
+        <MorphingCard glowColor={getDisciplineGlowColor(activity.discipline)}>
+          <ActivityStats activity={activity} />
         </MorphingCard>
       </motion.div>
 
@@ -147,6 +164,16 @@ export function ActivityDetail() {
           <ActivityMap activityId={Number(activity_id)} />
         </motion.div>
       )}
+
+      <motion.div variants={staggerItem}>
+        <MorphingCard glowColor="cyan">
+          <div className="flex items-center gap-2 mb-4">
+            <Timer className="w-5 h-5 text-cyan-400" />
+            <h3 className="text-lg font-semibold text-white">Splits & Laps</h3>
+          </div>
+          <SplitsTable activityId={Number(activity_id)} />
+        </MorphingCard>
+      </motion.div>
 
       {activity.hr_zones && (
         <motion.div variants={staggerItem}>
