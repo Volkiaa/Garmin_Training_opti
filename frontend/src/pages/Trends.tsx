@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { RefreshCw, TrendingUp, Calendar, Activity } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { MorphingCard } from '../components/morphic/MorphingCard';
+import { FluidButton } from '../components/morphic/FluidButton';
+import { RefreshCw, TrendingUp, Calendar, Activity, BarChart3 } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -18,7 +19,8 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { format, parseISO, subWeeks, startOfWeek } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { fadeInUp, staggerContainer, staggerItem, smoothSpring } from '../lib/animations';
 
 interface WeeklyMetric {
   week_start: string;
@@ -33,8 +35,6 @@ interface WeeklyMetric {
   avg_acwr: number;
   activity_count: number;
 }
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'];
 
 const DISCIPLINE_COLORS: Record<string, string> = {
   hyrox: '#3b82f6',
@@ -92,178 +92,209 @@ export function Trends() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full"
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        variants={staggerItem}
+      >
         <div className="flex items-center gap-3">
-          <TrendingUp className="w-6 h-6 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-900">Trends</h1>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <TrendingUp className="w-5 h-5 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+            Trends
+          </h1>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex gap-1 bg-white/5 backdrop-blur-sm p-1 rounded-xl border border-white/10">
             {[4, 8, 12].map((w) => (
-              <Button
+              <FluidButton
                 key={w}
                 variant={weeks === w ? 'primary' : 'ghost'}
                 size="sm"
                 onClick={() => setWeeks(w)}
+                className={weeks === w ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'text-gray-400'}
               >
                 {w}W
-              </Button>
+              </FluidButton>
             ))}
           </div>
-          <Button variant="outline" size="sm" onClick={handleAggregate}>
+          <FluidButton
+            variant="ghost"
+            size="sm"
+            onClick={handleAggregate}
+            className="text-gray-400 border-white/10"
+          >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
-          </Button>
+          </FluidButton>
         </div>
-      </div>
+      </motion.div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <Activity className="w-4 h-4" />
-              <span className="text-sm">Total Volume</span>
-            </div>
-            <p className="text-2xl font-bold">{totalVolume.toFixed(1)}h</p>
-            <p className="text-xs text-gray-500">{weeks} weeks</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-sm">Total Load</span>
-            </div>
-            <p className="text-2xl font-bold">{totalLoad.toFixed(0)}</p>
-            <p className="text-xs text-gray-500">Training stress</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <Calendar className="w-4 h-4" />
-              <span className="text-sm">Activities</span>
-            </div>
-            <p className="text-2xl font-bold">{totalActivities}</p>
-            <p className="text-xs text-gray-500">{(totalActivities / weeks).toFixed(1)}/week avg</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <Activity className="w-4 h-4" />
-              <span className="text-sm">Avg Readiness</span>
-            </div>
-            <p className={`text-2xl font-bold ${avgReadiness >= 70 ? 'text-green-600' : avgReadiness >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-              {avgReadiness.toFixed(0)}
-            </p>
-            <p className="text-xs text-gray-500">Out of 100</p>
-          </CardContent>
-        </Card>
-      </div>
+      <motion.div
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+        variants={staggerItem}
+      >
+        <MorphingCard glowColor="blue">
+          <div className="flex items-center gap-2 text-gray-400 mb-1">
+            <Activity className="w-4 h-4 text-blue-400" />
+            <span className="text-sm">Total Volume</span>
+          </div>
+          <p className="text-2xl font-bold text-white">{totalVolume.toFixed(1)}h</p>
+          <p className="text-xs text-gray-500">{weeks} weeks</p>
+        </MorphingCard>
+
+        <MorphingCard glowColor="emerald">
+          <div className="flex items-center gap-2 text-gray-400 mb-1">
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm">Total Load</span>
+          </div>
+          <p className="text-2xl font-bold text-white">{totalLoad.toFixed(0)}</p>
+          <p className="text-xs text-gray-500">Training stress</p>
+        </MorphingCard>
+
+        <MorphingCard glowColor="amber">
+          <div className="flex items-center gap-2 text-gray-400 mb-1">
+            <Calendar className="w-4 h-4 text-amber-400" />
+            <span className="text-sm">Activities</span>
+          </div>
+          <p className="text-2xl font-bold text-white">{totalActivities}</p>
+          <p className="text-xs text-gray-500">{(totalActivities / weeks).toFixed(1)}/week avg</p>
+        </MorphingCard>
+
+        <MorphingCard glowColor="purple">
+          <div className="flex items-center gap-2 text-gray-400 mb-1">
+            <BarChart3 className="w-4 h-4 text-purple-400" />
+            <span className="text-sm">Avg Readiness</span>
+          </div>
+          <p className={`text-2xl font-bold ${avgReadiness >= 70 ? 'text-emerald-400' : avgReadiness >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+            {avgReadiness.toFixed(0)}
+          </p>
+          <p className="text-xs text-gray-500">Out of 100</p>
+        </MorphingCard>
+      </motion.div>
 
       {/* Volume & Load Trend Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Volume & Load Trends</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <motion.div variants={staggerItem}>
+        <MorphingCard>
+          <h3 className="text-lg font-semibold text-white mb-4">Volume & Load Trends</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="weekLabel" 
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                <XAxis
+                  dataKey="weekLabel"
                   stroke="#6b7280"
                   fontSize={12}
+                  tick={{ fill: '#6b7280' }}
                 />
-                <YAxis yAxisId="left" stroke="#3b82f6" fontSize={12} />
-                <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={12} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                <YAxis yAxisId="left" stroke="#60a5fa" fontSize={12} tick={{ fill: '#6b7280' }} />
+                <YAxis yAxisId="right" orientation="right" stroke="#34d399" fontSize={12} tick={{ fill: '#6b7280' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1f2937',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    color: '#fff'
+                  }}
+                  labelStyle={{ color: '#9ca3af' }}
                 />
-                <Legend />
-                <Line 
+                <Legend wrapperStyle={{ color: '#9ca3af' }} />
+                <Line
                   yAxisId="left"
-                  type="monotone" 
-                  dataKey="total_volume_hours" 
-                  name="Volume (hours)" 
-                  stroke="#3b82f6" 
+                  type="monotone"
+                  dataKey="total_volume_hours"
+                  name="Volume (hours)"
+                  stroke="#60a5fa"
                   strokeWidth={2}
-                  dot={{ fill: '#3b82f6' }}
+                  dot={{ fill: '#60a5fa', strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5, stroke: '#60a5fa', strokeWidth: 2 }}
                 />
-                <Line 
+                <Line
                   yAxisId="right"
-                  type="monotone" 
-                  dataKey="total_load" 
-                  name="Training Load" 
-                  stroke="#10b981" 
+                  type="monotone"
+                  dataKey="total_load"
+                  name="Training Load"
+                  stroke="#34d399"
                   strokeWidth={2}
-                  dot={{ fill: '#10b981' }}
+                  dot={{ fill: '#34d399', strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5, stroke: '#34d399', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </MorphingCard>
+      </motion.div>
 
       {/* Readiness & HRV Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Readiness & Recovery Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <motion.div variants={staggerItem}>
+        <MorphingCard>
+          <h3 className="text-lg font-semibold text-white mb-4">Readiness & Recovery Metrics</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="weekLabel" stroke="#6b7280" fontSize={12} />
-                <YAxis yAxisId="left" domain={[0, 100]} stroke="#8b5cf6" fontSize={12} />
-                <YAxis yAxisId="right" orientation="right" stroke="#f59e0b" fontSize={12} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                <XAxis dataKey="weekLabel" stroke="#6b7280" fontSize={12} tick={{ fill: '#6b7280' }} />
+                <YAxis yAxisId="left" domain={[0, 100]} stroke="#a78bfa" fontSize={12} tick={{ fill: '#6b7280' }} />
+                <YAxis yAxisId="right" orientation="right" stroke="#fbbf24" fontSize={12} tick={{ fill: '#6b7280' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1f2937',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    color: '#fff'
+                  }}
+                  labelStyle={{ color: '#9ca3af' }}
                 />
-                <Legend />
-                <Line 
+                <Legend wrapperStyle={{ color: '#9ca3af' }} />
+                <Line
                   yAxisId="left"
-                  type="monotone" 
-                  dataKey="avg_readiness" 
-                  name="Readiness Score" 
-                  stroke="#8b5cf6" 
+                  type="monotone"
+                  dataKey="avg_readiness"
+                  name="Readiness Score"
+                  stroke="#a78bfa"
                   strokeWidth={2}
-                  dot={{ fill: '#8b5cf6' }}
+                  dot={{ fill: '#a78bfa', strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5, stroke: '#a78bfa', strokeWidth: 2 }}
                 />
-                <Line 
+                <Line
                   yAxisId="right"
-                  type="monotone" 
-                  dataKey="avg_hrv" 
-                  name="HRV (ms)" 
-                  stroke="#f59e0b" 
+                  type="monotone"
+                  dataKey="avg_hrv"
+                  name="HRV (ms)"
+                  stroke="#fbbf24"
                   strokeWidth={2}
-                  dot={{ fill: '#f59e0b' }}
+                  dot={{ fill: '#fbbf24', strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5, stroke: '#fbbf24', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </MorphingCard>
+      </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Discipline Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Volume by Discipline</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <motion.div variants={staggerItem}>
+          <MorphingCard>
+            <h3 className="text-lg font-semibold text-white mb-4">Volume by Discipline</h3>
             {disciplineData.length > 0 ? (
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -282,7 +313,14 @@ export function Trends() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1f2937',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                        color: '#fff'
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -291,69 +329,71 @@ export function Trends() {
                 No discipline data available
               </div>
             )}
-          </CardContent>
-        </Card>
+          </MorphingCard>
+        </motion.div>
 
         {/* Weekly Breakdown Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <motion.div variants={staggerItem}>
+          <MorphingCard>
+            <h3 className="text-lg font-semibold text-white mb-4">Weekly Breakdown</h3>
             <div className="overflow-x-auto max-h-64 overflow-y-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white">
-                  <tr className="border-b">
-                    <th className="text-left py-2 font-medium text-gray-600">Week</th>
-                    <th className="text-right py-2 font-medium text-gray-600">Volume</th>
-                    <th className="text-right py-2 font-medium text-gray-600">Load</th>
-                    <th className="text-right py-2 font-medium text-gray-600">Acts</th>
+                <thead className="sticky top-0 bg-[#1f2937]">
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-2 font-medium text-gray-400">Week</th>
+                    <th className="text-right py-2 font-medium text-gray-400">Volume</th>
+                    <th className="text-right py-2 font-medium text-gray-400">Load</th>
+                    <th className="text-right py-2 font-medium text-gray-400">Acts</th>
                   </tr>
                 </thead>
                 <tbody>
                   {weeklyData?.map((week) => (
-                    <tr key={week.week_start} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-2 text-gray-900">
+                    <tr key={week.week_start} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="py-2 text-gray-300">
                         {format(parseISO(week.week_start), 'MMM d')}
                       </td>
-                      <td className="text-right py-2">{week.total_volume_hours?.toFixed(1)}h</td>
-                      <td className="text-right py-2">{week.total_load?.toFixed(0)}</td>
-                      <td className="text-right py-2">{week.activity_count}</td>
+                      <td className="text-right py-2 text-gray-300">{week.total_volume_hours?.toFixed(1)}h</td>
+                      <td className="text-right py-2 text-gray-300">{week.total_load?.toFixed(0)}</td>
+                      <td className="text-right py-2 text-gray-300">{week.activity_count}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
+          </MorphingCard>
+        </motion.div>
       </div>
 
       {/* Activity Count Bar Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Weekly Activity Count</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <motion.div variants={staggerItem}>
+        <MorphingCard>
+          <h3 className="text-lg font-semibold text-white mb-4">Weekly Activity Count</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="weekLabel" stroke="#6b7280" fontSize={12} />
-                <YAxis stroke="#6b7280" fontSize={12} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                <XAxis dataKey="weekLabel" stroke="#6b7280" fontSize={12} tick={{ fill: '#6b7280' }} />
+                <YAxis stroke="#6b7280" fontSize={12} tick={{ fill: '#6b7280' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1f2937',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    color: '#fff'
+                  }}
+                  labelStyle={{ color: '#9ca3af' }}
                 />
-                <Bar 
-                  dataKey="activity_count" 
-                  name="Activities" 
+                <Bar
+                  dataKey="activity_count"
+                  name="Activities"
                   fill="#3b82f6"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </MorphingCard>
+      </motion.div>
+    </motion.div>
   );
 }
