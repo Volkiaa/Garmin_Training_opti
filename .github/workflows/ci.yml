@@ -91,4 +91,5 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+          PYTHONPATH: .
         run: pytest tests/ -v --cov=. --cov-report=term-missing
