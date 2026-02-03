@@ -131,6 +131,41 @@ class GarminSyncService:
             print(f"Error fetching activity details for {activity_id}: {e}")
             return None
 
+    def get_activity_gps(self, activity_id: str) -> Optional[List[Dict[str, Any]]]:
+        """Fetch GPS coordinates for an activity from Garmin.
+
+        Returns list of {latitude, longitude, altitude, time} dicts
+        or None if GPS data not available.
+        """
+        if not self.client:
+            return None
+
+        try:
+            details = self.client.get_activity_details(activity_id)
+            if not details:
+                return None
+
+            # Extract GPS data from geoPolyline
+            geo_polyline = details.get("geoPolyline", [])
+            if not geo_polyline:
+                return None
+
+            gps_points = []
+            for point in geo_polyline:
+                gps_points.append(
+                    {
+                        "latitude": point.get("latitude"),
+                        "longitude": point.get("longitude"),
+                        "altitude": point.get("altitude"),
+                        "time": point.get("time"),
+                    }
+                )
+
+            return gps_points
+        except Exception as e:
+            print(f"Error fetching GPS for activity {activity_id}: {e}")
+            return None
+
     def get_health_data(self, target_date: date) -> Dict[str, Any]:
         if not self.client:
             if not self.authenticate():

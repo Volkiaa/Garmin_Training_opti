@@ -76,6 +76,8 @@ class Activity(Base):
     hr_zone_5_minutes = Column(Float)
     notes = Column(String)
     raw_data = Column(JSON)
+    gps_polyline = Column(JSON)
+    gps_fetched_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

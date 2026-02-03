@@ -332,6 +332,47 @@ async def update_activity(
     return updated
 
 
+@app.get("/api/v1/activities/{activity_id}/gps")
+async def get_activity_gps(activity_id: int, db: AsyncSession = Depends(get_db)):
+    """Get GPS coordinates for an activity.
+
+    Fetches from cache if available, otherwise fetches from Garmin API
+    and caches the result.
+    """
+    from app.services.activity_service import ActivityService
+    from app.services.garmin_sync import GarminSyncService
+    from datetime import datetime, timezone
+
+    service = ActivityService(db)
+    activity = await service.get_by_id(activity_id)
+
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    # Check if we have cached GPS data
+    if activity.gps_polyline and activity.gps_fetched_at:
+        return {"coordinates": activity.gps_polyline}
+
+    # Fetch from Garmin if we have a garmin_id
+    if not activity.garmin_id:
+        raise HTTPException(
+            status_code=404, detail="No Garmin data available for this activity"
+        )
+
+    sync_service = GarminSyncService()
+    gps_data = sync_service.get_activity_gps(activity.garmin_id)
+
+    if not gps_data:
+        raise HTTPException(status_code=404, detail="GPS data not available")
+
+    # Cache the GPS data
+    activity.gps_polyline = gps_data
+    activity.gps_fetched_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return {"coordinates": gps_data}
+
+
 @app.get("/api/v1/health/daily", response_model=HealthMetricsList)
 async def get_health_daily(
     start_date: date, end_date: date, db: AsyncSession = Depends(get_db)
