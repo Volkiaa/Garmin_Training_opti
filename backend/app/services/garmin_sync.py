@@ -311,6 +311,20 @@ class GarminSyncService:
             "hr_zone_3_minutes": (raw_activity.get("hrTimeInZone_3", 0) or 0) / 60,
             "hr_zone_4_minutes": (raw_activity.get("hrTimeInZone_4", 0) or 0) / 60,
             "hr_zone_5_minutes": (raw_activity.get("hrTimeInZone_5", 0) or 0) / 60,
+            "avg_power": raw_activity.get("avgPower"),
+            "max_power": raw_activity.get("maxPower"),
+            "normalized_power": raw_activity.get("normPower")
+            or raw_activity.get("normalizedPower"),
+            "avg_speed": raw_activity.get("averageSpeed"),
+            "max_speed": raw_activity.get("maxSpeed"),
+            "avg_cadence": raw_activity.get("avgRunCadence")
+            or raw_activity.get("avgBikeCadence"),
+            "max_cadence": raw_activity.get("maxRunCadence")
+            or raw_activity.get("maxBikeCadence"),
+            "elevation_gain": raw_activity.get("elevationGain"),
+            "elevation_loss": raw_activity.get("elevationLoss"),
+            "aerobic_te": raw_activity.get("aerobicTrainingEffect"),
+            "anaerobic_te": raw_activity.get("anaerobicTrainingEffect"),
             "raw_data": raw_activity,
         }
 
