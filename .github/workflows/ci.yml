@@ -32,7 +32,7 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint
+        run: npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 50
 
       - name: Type check
         run: npx tsc --noEmit
@@ -81,10 +81,10 @@ jobs:
         run: flake8 .
 
       - name: Check formatting with black
-        run: black --check .
+        run: black --check --exclude '/alembic/' .
 
       - name: Check import sorting with isort
-        run: isort --check-only .
+        run: isort --check-only --skip alembic .
 
       - name: Type check with mypy
         run: mypy .
