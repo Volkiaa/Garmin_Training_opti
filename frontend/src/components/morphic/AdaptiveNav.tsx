@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, Settings, Activity, Trophy } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Settings, Activity, Trophy, Calendar } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface NavItem {
@@ -16,6 +16,7 @@ export function AdaptiveNav() {
   const [navItems, setNavItems] = useState<NavItem[]>([
     { to: '/', icon: LayoutDashboard, label: 'Dashboard', usageCount: 0 },
     { to: '/activities', icon: Activity, label: 'Activities', usageCount: 0 },
+    { to: '/calendar', icon: Calendar, label: 'Calendar', usageCount: 0 },
     { to: '/events', icon: Trophy, label: 'Events', usageCount: 0 },
     { to: '/trends', icon: TrendingUp, label: 'Trends', usageCount: 0 },
     { to: '/settings', icon: Settings, label: 'Settings', usageCount: 0 },
@@ -32,9 +33,15 @@ export function AdaptiveNav() {
     );
   }, [location.pathname]);
 
-  const sortedNavItems = [...navItems].sort(
-    (a, b) => b.usageCount - a.usageCount
-  );
+  const sortedNavItems = [...navItems].sort((a, b) => {
+    const aIsActive = location.pathname === a.to;
+    const bIsActive = location.pathname === b.to;
+    
+    if (aIsActive) return -1;
+    if (bIsActive) return 1;
+    
+    return b.usageCount - a.usageCount;
+  });
 
   return (
     <motion.nav

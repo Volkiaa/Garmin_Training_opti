@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useDashboard } from '../hooks/useDashboard';
 import { useReadinessVersion } from '../hooks/useReadinessVersion';
 import { useTriggerSync } from '../hooks/useSync';
@@ -6,11 +7,12 @@ import { formatDuration, formatDate, formatLoad, getDisciplineLabel, getIntensit
 import { Activity, RefreshCw, Zap, TrendingUp, Clock } from 'lucide-react';
 import { ReadinessToggle } from '../components/ReadinessToggle';
 import { MorphingCard, FluidButton, ReadinessGauge } from '../components/morphic';
-import { fadeInUp, staggerContainer, staggerItem } from '../lib/animations';
+import { staggerContainer, staggerItem } from '../lib/animations';
 import { getGlowColor, getDisciplineGlowColor } from '../lib/morphic-utils';
 import { PMCMiniChart } from '../components/PMCMiniChart';
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const { version, setReadinessVersion, isLoading: versionLoading } = useReadinessVersion();
   const { data: dashboard, isLoading, error } = useDashboard(version);
   const triggerSync = useTriggerSync();
@@ -178,7 +180,10 @@ export function Dashboard() {
       {/* PMC Chart */}
       <motion.div variants={staggerItem}>
         <MorphingCard glowColor="rgba(59, 130, 246, 0.3)">
-          <div className="space-y-4">
+          <div 
+            className="space-y-4 cursor-pointer"
+            onClick={() => navigate('/trends')}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-blue-400" />
@@ -246,7 +251,8 @@ export function Dashboard() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                  className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/activities/${activity.id}`)}
                 >
                   <div className="flex items-center gap-3">
                     <Activity className="w-4 h-4 text-gray-400" />
