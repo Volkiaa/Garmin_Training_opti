@@ -64,18 +64,20 @@ class TestACWR:
 
     def test_acwr_high_load(self):
         """ACWR > 1.5 indicates danger zone."""
-        # Increasing load over 28 days
-        loads = list(range(50, 78))  # 50 to 77 (28 days, increasing)
+        # Low chronic load followed by sudden spike in acute period
+        # 21 days of low load, then 7 days of very high load
+        loads = [20.0] * 21 + [150.0] * 7
         result = calculate_acwr_ewma(loads)
-        # Should be > 1.5 (acute higher than chronic)
+        # Should be > 1.5 (acute much higher than chronic)
         assert result > 1.5
 
     def test_acwr_low_load(self):
         """ACWR < 0.8 indicates undertraining."""
-        # Decreasing load over 28 days
-        loads = list(range(100, 72, -1))  # 100 to 73 (decreasing)
+        # High chronic load followed by sudden drop in acute period
+        # 21 days of high load, then 7 days of very low load
+        loads = [100.0] * 21 + [10.0] * 7
         result = calculate_acwr_ewma(loads)
-        # Should be < 0.8 (acute lower than chronic)
+        # Should be < 0.8 (acute much lower than chronic)
         assert result < 0.8
 
 
@@ -101,7 +103,7 @@ class TestACWRPenalty:
 
         assert result_13 == 0.0  # At boundary
         assert 0 < result_14 < 10  # In the middle
-        assert result_15 == 10.0  # At boundary
+        assert result_15 == pytest.approx(10.0)  # At boundary
 
     def test_acwr_penalty_danger(self):
         """Danger zone (1.5 - 2.0) has significant penalty."""
@@ -109,9 +111,9 @@ class TestACWRPenalty:
         result_175 = calculate_acwr_penalty(1.75)
         result_20 = calculate_acwr_penalty(2.0)
 
-        assert result_15 == 10.0
+        assert result_15 == pytest.approx(10.0)
         assert 10 < result_175 < 20
-        assert result_20 == 20.0
+        assert result_20 == pytest.approx(20.0)
 
     def test_acwr_penalty_high_risk(self):
         """High risk (> 2.0) has major penalty capped at 25."""
