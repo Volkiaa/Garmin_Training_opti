@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, Clock, Activity, Zap, Edit2, Save, FileText, Mountain, Timer } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Activity, Zap, Edit2, Save, FileText, Mountain, Timer, RefreshCw } from 'lucide-react';
 import { MorphingCard, FluidButton } from '../components/morphic';
 import { staggerContainer, staggerItem } from '../lib/animations';
 import { formatDate, formatDuration, formatLoad, getDisciplineLabel } from '../lib/utils';
@@ -102,6 +102,16 @@ export function ActivityDetail() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </FluidButton>
+        <button
+          onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['activity', activity_id] });
+            queryClient.invalidateQueries({ queryKey: ['activities'] });
+          }}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+        </button>
         <h1 className="text-2xl font-bold text-white">
           {activity.activity_name || getDisciplineLabel(activity.discipline)}
         </h1>
