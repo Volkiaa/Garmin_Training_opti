@@ -310,3 +310,45 @@ class TrendsService:
             }
             for m in metrics
         ]
+
+    async def get_pmc_data(self, days: int = 90) -> List[Dict[str, Any]]:
+        """Get Performance Management Chart (PMC) data.
+
+        Calculates fitness (CTL), fatigue (ATL), and form (TSB) metrics
+        using exponential moving averages of daily training load (TSS).
+
+        Args:
+            days: Number of days to calculate (default 90, min 7, max 365)
+
+        Returns:
+            List of daily PMC metrics with date, ctl, atl, tsb, tss
+        """
+        from datetime import datetime
+        from app.core.training_load import calculate_pmc_metrics
+
+        # Calculate date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        # Fetch activities for the period
+        result = await self.db.execute(
+            select(Activity)
+            .where(Activity.started_at >= start_date)
+            .order_by(Activity.started_at)
+        )
+
+        activities = result.scalars().all()
+
+        # Convert to dict format expected by calculate_pmc_metrics
+        activity_dicts = [
+            {
+                "started_at": a.started_at,
+                "training_load": a.training_load,
+            }
+            for a in activities
+        ]
+
+        # Calculate PMC metrics
+        pmc_data = calculate_pmc_metrics(activity_dicts, end_date, days)
+
+        return pmc_data

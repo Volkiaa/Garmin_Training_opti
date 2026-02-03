@@ -758,6 +758,25 @@ async def compare_periods(
     return comparison
 
 
+@app.get("/api/v1/trends/pmc")
+async def get_pmc_data(
+    days: int = Query(90, ge=7, le=365),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.trends_service import TrendsService
+
+    service = TrendsService(db)
+    pmc_data = await service.get_pmc_data(days)
+
+    return {
+        "dates": [d["date"] for d in pmc_data],
+        "ctl": [d["ctl"] for d in pmc_data],
+        "atl": [d["atl"] for d in pmc_data],
+        "tsb": [d["tsb"] for d in pmc_data],
+        "tss": [d["tss"] for d in pmc_data],
+    }
+
+
 @app.get("/api/v1/features")
 async def get_features(db: AsyncSession = Depends(get_db)):
     from app.services.feature_flag_service import FeatureFlagService

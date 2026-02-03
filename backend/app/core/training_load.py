@@ -154,3 +154,91 @@ def get_intensity_distribution(
             distribution[intensity] = round(distribution[intensity] / total_duration, 2)
 
     return distribution
+
+
+def calculate_pmc_metrics(
+    activities: List[Dict[str, Any]], end_date: datetime, days: int = 90
+) -> List[Dict[str, Any]]:
+    """Calculate Performance Management Chart (PMC) metrics.
+
+    PMC tracks fitness (CTL), fatigue (ATL), and form (TSB) over time.
+
+    Args:
+        activities: List of activity dicts with 'started_at' and 'training_load'
+        end_date: End date for calculation period
+        days: Number of days to calculate (default 90)
+
+    Returns:
+        List of daily PMC data with date, ctl, atl, tsb
+    """
+    from datetime import timedelta
+
+    # Calculate start date
+    start_date = end_date - timedelta(days=days)
+
+    # Aggregate daily TSS
+    daily_tss: Dict[str, float] = {}
+
+    for activity in activities:
+        activity_date = activity.get("started_at")
+        if not activity_date:
+            continue
+
+        # Parse date
+        if isinstance(activity_date, str):
+            activity_date = datetime.fromisoformat(activity_date.replace("Z", "+00:00"))
+
+        # Remove timezone for comparison
+        if activity_date.tzinfo is not None:
+            activity_date = activity_date.replace(tzinfo=None)
+
+        # Only include activities in date range
+        if start_date <= activity_date <= end_date:
+            date_key = activity_date.strftime("%Y-%m-%d")
+            tss = activity.get("training_load", 0) or 0
+            daily_tss[date_key] = daily_tss.get(date_key, 0) + tss
+
+    # Generate all dates in range
+    pmc_data = []
+    ctl = 0.0  # Chronic Training Load (42-day EMA)
+    atl = 0.0  # Acute Training Load (7-day EMA)
+
+    # Initialize with reasonable defaults if we have data
+    if daily_tss:
+        avg_tss = sum(daily_tss.values()) / len(daily_tss)
+        ctl = avg_tss
+        atl = avg_tss
+
+    # Calculate PMC for each day
+    for i in range(days + 1):
+        current_date = start_date + timedelta(days=i)
+        date_key = current_date.strftime("%Y-%m-%d")
+
+        # Get TSS for today (0 if no activities)
+        tss_today = daily_tss.get(date_key, 0)
+
+        # Store yesterday's values for TSB calculation
+        ctl_yesterday = ctl
+        atl_yesterday = atl
+
+        # Calculate exponential moving averages
+        # CTL: 42-day constant
+        ctl = ctl_yesterday + (tss_today - ctl_yesterday) / 42
+
+        # ATL: 7-day constant
+        atl = atl_yesterday + (tss_today - atl_yesterday) / 7
+
+        # TSB: Training Stress Balance (yesterday's CTL - yesterday's ATL)
+        tsb = ctl_yesterday - atl_yesterday
+
+        pmc_data.append(
+            {
+                "date": date_key,
+                "ctl": round(ctl, 1),
+                "atl": round(atl, 1),
+                "tsb": round(tsb, 1),
+                "tss": round(tss_today, 1),
+            }
+        )
+
+    return pmc_data
