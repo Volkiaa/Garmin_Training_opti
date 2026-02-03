@@ -59,7 +59,9 @@ async def get_dashboard(
     health = await health_service.get_by_date(today)
     settings = await settings_service.get_settings()
 
-    week_start = today - timedelta(days=7)
+    week_start = today - timedelta(
+        days=today.weekday()
+    )  # Start of current week (Monday)
     activities_result = await db.execute(
         select(ActivityModel).where(
             ActivityModel.started_at
