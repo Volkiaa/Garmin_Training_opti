@@ -12,7 +12,7 @@ interface ActivityWithStats {
   normalized_power?: number | null;
   avg_speed?: number | null;
   avg_cadence?: number | null;
-  total_elevation_gain?: number | null;
+  elevation_gain?: number | null;
 }
 
 interface ActivityStatsProps {
@@ -87,7 +87,7 @@ export function ActivityStats({ activity }: ActivityStatsProps) {
           <div>
             <p className="text-xs text-gray-400">Elevation</p>
             <p className="text-sm font-medium text-white">
-              {activity.total_elevation_gain ? `${Math.round(activity.total_elevation_gain)} m` : '-'}
+              {activity.elevation_gain ? `${Math.round(activity.elevation_gain)} m` : '-'}
             </p>
           </div>
         </div>
