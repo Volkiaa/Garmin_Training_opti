@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Activity, Filter, ArrowUpDown, Calendar } from 'lucide-react';
 import { useActivitiesWithFilters } from '../hooks/useActivitiesWithFilters';
 import { Pagination } from '../components/Pagination';
@@ -12,9 +13,10 @@ import {
 } from '../lib/utils';
 import { MorphingCard, FluidButton } from '../components/morphic';
 import { staggerContainer, staggerItem } from '../lib/animations';
-import { getGlowColor, getDisciplineGlowColor } from '../lib/morphic-utils';
+import { getDisciplineGlowColor } from '../lib/morphic-utils';
 
 export function Activities() {
+  const navigate = useNavigate();
   const {
     activities,
     total,
@@ -128,7 +130,8 @@ export function Activities() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                    onClick={() => navigate(`/activities/${activity.id}`)}
+                    className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
                       <Activity className="w-4 h-4 text-gray-400" />

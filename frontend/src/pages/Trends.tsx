@@ -21,7 +21,7 @@ import {
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { formatLoad } from '../lib/utils';
-import { fadeInUp, staggerContainer, staggerItem, smoothSpring } from '../lib/animations';
+import { staggerContainer, staggerItem } from '../lib/animations';
 import { PMCChart } from '../components/PMCChart';
 
 interface WeeklyMetric {

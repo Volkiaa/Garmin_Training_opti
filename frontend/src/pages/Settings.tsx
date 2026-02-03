@@ -6,7 +6,7 @@ import { useSettings, useUpdateSettings } from '../hooks/useSettings';
 import { useTriggerSync } from '../hooks/useSync';
 import { syncApi } from '../lib/api';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCw, AlertCircle, CheckCircle, User, Moon, Activity, Settings as SettingsIcon } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle, User, Moon, Activity, Settings as SettingsIcon, Heart } from 'lucide-react';
 import { staggerContainer, staggerItem } from '../lib/animations';
 
 export function Settings() {
@@ -293,6 +293,198 @@ export function Settings() {
           </MorphingCard>
         </motion.div>
       )}
+
+      {settings && (
+        <motion.div variants={staggerItem}>
+          <HRZoneConfiguration 
+            maxHr={settings.max_hr} 
+            restingHr={settings.resting_hr_baseline} 
+          />
+        </motion.div>
+      )}
     </motion.div>
+  );
+}
+
+interface HRZone {
+  zone: number;
+  name: string;
+  min_pct: number;
+  max_pct: number;
+  min_bpm: number;
+  max_bpm: number;
+}
+
+interface HRZoneConfigurationProps {
+  maxHr: number;
+  restingHr: number;
+}
+
+function HRZoneConfiguration({ maxHr, restingHr }: HRZoneConfigurationProps) {
+  const [isCustom, setIsCustom] = useState(false);
+  const [customZones, setCustomZones] = useState<HRZone[]>([]);
+  const [source, setSource] = useState<'calculated' | 'custom'>('calculated');
+
+  const { data: zonesData, isLoading } = useQuery({
+    queryKey: ['hr-zones', maxHr, restingHr],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/settings/hr-zones?max_hr=${maxHr}&resting_hr=${restingHr}`);
+      if (!res.ok) throw new Error('Failed to fetch HR zones');
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (zonesData) {
+      setCustomZones(zonesData.zones);
+      setSource(zonesData.source);
+    }
+  }, [zonesData]);
+
+  const handleSaveCustom = async () => {
+    try {
+      const res = await fetch('/api/v1/settings/hr-zones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zones: customZones }),
+      });
+      if (!res.ok) throw new Error('Failed to save zones');
+      setSource('custom');
+      setIsCustom(false);
+    } catch (e) {
+      console.error('Failed to save custom zones:', e);
+    }
+  };
+
+  const handleZoneChange = (index: number, field: keyof HRZone, value: number) => {
+    setCustomZones(prev => prev.map((zone, i) => 
+      i === index ? { ...zone, [field]: value } : zone
+    ));
+  };
+
+  if (isLoading) {
+    return (
+      <MorphingCard glowColor="red">
+        <div className="flex items-center gap-2 mb-4">
+          <Heart className="w-5 h-5 text-red-400" />
+          <h3 className="text-lg font-semibold text-white">Heart Rate Zones</h3>
+        </div>
+        <div className="flex justify-center py-8">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="w-8 h-8 border-2 border-red-400 border-t-transparent rounded-full"
+          />
+        </div>
+      </MorphingCard>
+    );
+  }
+
+  const zones = isCustom ? customZones : (zonesData?.zones || []);
+
+  return (
+    <MorphingCard glowColor="red">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Heart className="w-5 h-5 text-red-400" />
+          <h3 className="text-lg font-semibold text-white">Heart Rate Zones</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-sm ${source === 'custom' ? 'text-amber-400' : 'text-emerald-400'}`}>
+            {source === 'custom' ? 'Custom' : 'Auto-calculated'}
+          </span>
+          <button
+            onClick={() => setIsCustom(!isCustom)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              isCustom ? 'bg-amber-500' : 'bg-gray-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                isCustom ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+          <span className="text-sm text-gray-400">Custom</span>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/10">
+              <th className="text-left py-2 text-sm font-medium text-gray-400">Zone</th>
+              <th className="text-left py-2 text-sm font-medium text-gray-400">% Max HR</th>
+              <th className="text-left py-2 text-sm font-medium text-gray-400">BPM</th>
+            </tr>
+          </thead>
+          <tbody>
+            {zones.map((zone: {zone: number; name: string; min_pct: number; max_pct: number; min_bpm: number; max_bpm: number}, index: number) => (
+              <tr key={zone.zone} className="border-b border-white/5">
+                <td className="py-2 text-white">{zone.name}</td>
+                <td className="py-2 text-gray-300">
+                  {isCustom ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        value={zone.min_pct}
+                        onChange={(e) => handleZoneChange(index, 'min_pct', parseInt(e.target.value))}
+                        className="w-12 px-1 py-0.5 rounded bg-white/10 text-white text-sm"
+                      />
+                      <span>-</span>
+                      <input
+                        type="number"
+                        value={zone.max_pct}
+                        onChange={(e) => handleZoneChange(index, 'max_pct', parseInt(e.target.value))}
+                        className="w-12 px-1 py-0.5 rounded bg-white/10 text-white text-sm"
+                      />
+                      <span>%</span>
+                    </div>
+                  ) : (
+                    `${zone.min_pct}-${zone.max_pct}%`
+                  )}
+                </td>
+                <td className="py-2 text-gray-300">
+                  {isCustom ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        value={zone.min_bpm}
+                        onChange={(e) => handleZoneChange(index, 'min_bpm', parseInt(e.target.value))}
+                        className="w-14 px-1 py-0.5 rounded bg-white/10 text-white text-sm"
+                      />
+                      <span>-</span>
+                      <input
+                        type="number"
+                        value={zone.max_bpm}
+                        onChange={(e) => handleZoneChange(index, 'max_bpm', parseInt(e.target.value))}
+                        className="w-14 px-1 py-0.5 rounded bg-white/10 text-white text-sm"
+                      />
+                    </div>
+                  ) : (
+                    `${zone.min_bpm}-${zone.max_bpm}`
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {isCustom && (
+        <div className="flex gap-2 mt-4">
+          <FluidButton variant="primary" size="sm" onClick={handleSaveCustom}>
+            Save Custom Zones
+          </FluidButton>
+          <FluidButton variant="ghost" size="sm" onClick={() => setIsCustom(false)}>
+            Cancel
+          </FluidButton>
+        </div>
+      )}
+
+      <p className="text-xs text-gray-500 mt-4">
+        Based on Max HR: {maxHr} bpm, Resting HR: {restingHr} bpm
+      </p>
+    </MorphingCard>
   );
 }
