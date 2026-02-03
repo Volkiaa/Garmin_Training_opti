@@ -690,6 +690,100 @@ async def update_settings(update: SettingsUpdate, db: AsyncSession = Depends(get
     }
 
 
+@app.get("/api/v1/settings/hr-zones")
+async def get_hr_zones(db: AsyncSession = Depends(get_db)):
+    """Get HR zone configuration."""
+    service = SettingsService(db)
+    settings = await service.get_settings()
+
+    # Return stored zones or calculate defaults
+    if settings.hr_zones and len(settings.hr_zones) > 0:
+        return {"zones": settings.hr_zones, "source": "custom"}
+
+    # Calculate default zones from max_hr
+    max_hr = settings.max_hr or 185
+    resting_hr = settings.resting_hr_baseline or 50
+
+    zones = calculate_hr_zones(max_hr, resting_hr)
+    return {"zones": zones, "source": "calculated"}
+
+
+@app.post("/api/v1/settings/hr-zones/calculate")
+async def calculate_hr_zones_endpoint(
+    max_hr: int = Query(..., ge=120, le=220),
+    resting_hr: int = Query(..., ge=30, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """Calculate HR zones from max HR and resting HR."""
+    zones = calculate_hr_zones(max_hr, resting_hr)
+    return {"zones": zones}
+
+
+@app.patch("/api/v1/settings/hr-zones")
+async def update_hr_zones(zones: Dict[str, Any], db: AsyncSession = Depends(get_db)):
+    """Update custom HR zone configuration."""
+    service = SettingsService(db)
+    settings = await service.get_settings()
+
+    settings.hr_zones = zones.get("zones", zones)
+    await db.commit()
+
+    return {"zones": settings.hr_zones, "source": "custom"}
+
+
+def calculate_hr_zones(max_hr: int, resting_hr: int) -> List[Dict[str, Any]]:
+    """Calculate HR zones using Karvonen formula (heart rate reserve).
+
+    Zones:
+    - Zone 1 (Recovery): 50-60% of HRR
+    - Zone 2 (Aerobic): 60-70% of HRR
+    - Zone 3 (Tempo): 70-80% of HRR
+    - Zone 4 (Threshold): 80-90% of HRR
+    - Zone 5 (VO2 Max): 90-100% of HRR
+    """
+    hrr = max_hr - resting_hr
+
+    zones = [
+        {
+            "zone": 1,
+            "name": "Recovery",
+            "min_hr": resting_hr + int(hrr * 0.50),
+            "max_hr": resting_hr + int(hrr * 0.60),
+            "color": "#22c55e",  # green
+        },
+        {
+            "zone": 2,
+            "name": "Aerobic",
+            "min_hr": resting_hr + int(hrr * 0.60),
+            "max_hr": resting_hr + int(hrr * 0.70),
+            "color": "#3b82f6",  # blue
+        },
+        {
+            "zone": 3,
+            "name": "Tempo",
+            "min_hr": resting_hr + int(hrr * 0.70),
+            "max_hr": resting_hr + int(hrr * 0.80),
+            "color": "#f59e0b",  # yellow
+        },
+        {
+            "zone": 4,
+            "name": "Threshold",
+            "min_hr": resting_hr + int(hrr * 0.80),
+            "max_hr": resting_hr + int(hrr * 0.90),
+            "color": "#f97316",  # orange
+        },
+        {
+            "zone": 5,
+            "name": "VO2 Max",
+            "min_hr": resting_hr + int(hrr * 0.90),
+            "max_hr": max_hr,
+            "color": "#ef4444",  # red
+        },
+    ]
+
+    return zones
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}

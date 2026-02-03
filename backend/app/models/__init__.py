@@ -145,6 +145,7 @@ class UserSettings(Base):
     weekly_volume_targets = Column(JSON, default=dict)
     fatigue_decay_rates = Column(JSON, default=dict)
     override_garmin = Column(Integer, default=0)
+    hr_zones = Column(JSON, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
