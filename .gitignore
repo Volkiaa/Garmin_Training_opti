@@ -55,3 +55,11 @@ postgres_data/
 # Tokens
 tokens/
 .garmin_tokens/
+
+# Secrets & Keys
+*.pem
+*.key
+*_rsa
+*.p12
+*.pfx
+*.jks
