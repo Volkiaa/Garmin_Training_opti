@@ -22,6 +22,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { formatLoad } from '../lib/utils';
 import { fadeInUp, staggerContainer, staggerItem, smoothSpring } from '../lib/animations';
+import { PMCChart } from '../components/PMCChart';
 
 interface WeeklyMetric {
   week_start: string;
@@ -190,6 +191,11 @@ export function Trends() {
           </p>
           <p className="text-xs text-gray-500">Out of 100</p>
         </MorphingCard>
+      </motion.div>
+
+      {/* Performance Management Chart */}
+      <motion.div variants={staggerItem}>
+        <PMCChart />
       </motion.div>
 
       {/* Volume & Load Trend Chart */}
