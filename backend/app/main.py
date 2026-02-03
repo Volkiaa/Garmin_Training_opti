@@ -127,7 +127,6 @@ async def get_dashboard(
         "cardio": float(metrics.fatigue_cardio or 0),
         "cns": float(metrics.fatigue_cns or 0),
     }
-    guidance = generate_guidance(fatigue)
 
     # Get health data for readiness calculation
     hrv_today = health.hrv_status if health else None
@@ -194,6 +193,9 @@ async def get_dashboard(
         readiness_score = readiness_result["score"]
         readiness_category = readiness_result["category"]
         readiness_factors = readiness_result["factors"]
+
+    # Generate guidance based on readiness score (not just fatigue)
+    guidance = generate_guidance(fatigue, readiness_score=int(readiness_score))
 
     sport_readiness = evaluate_sport_readiness(
         readiness_score=int(readiness_score),

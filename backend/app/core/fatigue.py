@@ -64,40 +64,109 @@ def calculate_fatigue(
     return fatigue
 
 
-def generate_guidance(fatigue: Dict[str, float]) -> Dict[str, Any]:
+def generate_guidance(
+    fatigue: Dict[str, float], readiness_score: int = 100
+) -> Dict[str, Any]:
+    """Generate training guidance based on readiness score and fatigue levels.
+
+    Args:
+        fatigue: Dict with fatigue levels for each body system
+        readiness_score: Overall readiness score (0-100), default 100
+
+    Returns:
+        Dict with recommendation, avoid list, and suggested list
+    """
     avoid = []
     suggested = []
 
-    if fatigue["lower"] > 0.7:
-        avoid.extend(["Running", "Heavy squats/deadlifts", "Hyrox"])
-        suggested.extend(["Upper body strength", "Swimming"])
+    # PRIMARY: Use readiness score as the main factor for guidance
+    # This ensures safety-first recommendations at low readiness
+    if readiness_score >= 80:
+        # High readiness - can handle intense training
+        recommendation = "Ready to perform - High intensity training is appropriate"
+        suggested = [
+            "All training types",
+            "Competition prep",
+            "PR attempts",
+            "Heavy lifting",
+        ]
 
-    if fatigue["upper"] > 0.7:
-        avoid.extend(["Upper body strength", "Swimming pull sets"])
-        suggested.extend(["Running", "Cycling"])
+        # Even with high readiness, check for specific fatigue issues
+        if fatigue["cns"] > 0.7:
+            avoid.append("Max efforts")
+            suggested.remove("PR attempts") if "PR attempts" in suggested else None
+        if fatigue["lower"] > 0.7:
+            avoid.extend(["Heavy squats/deadlifts"])
+        if fatigue["cardio"] > 0.7:
+            avoid.extend(["High-intensity intervals"])
 
-    if fatigue["cardio"] > 0.7:
-        avoid.extend(["High-intensity intervals", "Threshold work"])
-        suggested.extend(["Strength training", "Easy Zone 2"])
+    elif readiness_score >= 60:
+        # Good readiness - moderate training
+        recommendation = "Good readiness - Moderate training recommended"
+        avoid = ["Max efforts", "Competition", "PR attempts"]
+        suggested = [
+            "Moderate intensity work",
+            "Base building",
+            "Skill practice",
+            "Tempo runs",
+        ]
 
-    if fatigue["cns"] > 0.7:
-        avoid.extend(["Heavy lifting", "Max efforts", "Complex movements"])
-        suggested.extend(["Light technique work", "Easy cardio", "Rest"])
+        # Add fatigue-based adjustments
+        if fatigue["lower"] > 0.6:
+            avoid.extend(["Heavy lower body", "Running"])
+            suggested.extend(["Upper body", "Swimming"])
+        if fatigue["upper"] > 0.6:
+            avoid.extend(["Upper body strength"])
+            suggested.extend(["Lower body", "Cycling"])
+        if fatigue["cardio"] > 0.6:
+            avoid.extend(["Threshold work"])
+            suggested.extend(["Easy Zone 2", "Strength work"])
+        if fatigue["cns"] > 0.6:
+            avoid.extend(["Complex movements", "Heavy lifting"])
+            suggested.extend(["Technique work", "Mobility"])
 
-    if all(f > 0.6 for f in fatigue.values()):
-        return {
-            "recommendation": "Rest day recommended",
-            "avoid": list(set(["All training"])),
-            "suggested": ["Complete rest", "Light walk", "Mobility work"],
-        }
+    elif readiness_score >= 40:
+        # Low readiness - easy training only
+        recommendation = "Reduced readiness - Easy training only"
+        avoid = [
+            "High intensity",
+            "Heavy lifting",
+            "Long sessions",
+            "Max efforts",
+            "Competition",
+        ]
+        suggested = [
+            "Easy cardio (Zone 1-2)",
+            "Mobility work",
+            "Light technique",
+            "Recovery activities",
+        ]
 
+        # Even stricter with high fatigue
+        if any(f > 0.7 for f in fatigue.values()):
+            avoid.extend(["All structured training"])
+            suggested = ["Complete rest", "Light walking", "Stretching"]
+
+    else:
+        # Poor readiness - rest and recovery
+        recommendation = "Recovery needed - Prioritize rest and recovery"
+        avoid = ["All training", "Any intensity", "Structured workouts"]
+        suggested = [
+            "Complete rest",
+            "Light walking",
+            "Stretching",
+            "Sleep",
+            "Hydration",
+        ]
+
+    # Clean up empty/default values
     if not avoid:
-        avoid = ["None - you're ready to train!"]
+        avoid = []
     if not suggested:
         suggested = ["Follow your planned training"]
 
     return {
-        "recommendation": get_recommendation_text(fatigue),
+        "recommendation": recommendation,
         "avoid": list(set(avoid)),
         "suggested": list(set(suggested)),
     }

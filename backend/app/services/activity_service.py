@@ -236,7 +236,6 @@ class MetricsService:
         acwr = calculate_acwr(acute, chronic)
 
         fatigue = calculate_fatigue(activities_data, end_datetime)
-        guidance = generate_guidance(fatigue)
 
         weekly_volume = get_weekly_volume_by_discipline(activities_data, end_datetime)
         intensity_dist = get_intensity_distribution(activities_data, end_datetime)
@@ -275,6 +274,9 @@ class MetricsService:
             avg_readiness_3_days=70,
             today=end_datetime,
         )
+
+        # Generate guidance based on readiness score (not just fatigue)
+        guidance = generate_guidance(fatigue, readiness_score=readiness_result["score"])
 
         existing = await self.db.execute(
             select(ComputedMetrics).where(ComputedMetrics.date == target_date)
