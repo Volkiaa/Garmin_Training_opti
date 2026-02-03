@@ -8,6 +8,7 @@ import { ReadinessToggle } from '../components/ReadinessToggle';
 import { MorphingCard, FluidButton, ReadinessGauge } from '../components/morphic';
 import { fadeInUp, staggerContainer, staggerItem } from '../lib/animations';
 import { getGlowColor, getDisciplineGlowColor } from '../lib/morphic-utils';
+import { PMCMiniChart } from '../components/PMCMiniChart';
 
 export function Dashboard() {
   const { version, setReadinessVersion, isLoading: versionLoading } = useReadinessVersion();
@@ -173,6 +174,22 @@ export function Dashboard() {
           </MorphingCard>
         </motion.div>
       </div>
+
+      {/* PMC Chart */}
+      <motion.div variants={staggerItem}>
+        <MorphingCard glowColor="rgba(59, 130, 246, 0.3)">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-400" />
+                <h2 className="text-sm font-medium text-gray-300">Performance Management</h2>
+              </div>
+              <span className="text-xs text-gray-400">Last 30 days</span>
+            </div>
+            <PMCMiniChart days={30} />
+          </div>
+        </MorphingCard>
+      </motion.div>
 
       {/* Guidance Card - Dynamic based on readiness */}
       <motion.div variants={staggerItem}>
