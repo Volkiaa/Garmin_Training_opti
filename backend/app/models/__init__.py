@@ -8,6 +8,7 @@ from sqlalchemy import (
     JSON,
     ARRAY,
     Enum,
+    Text,
     create_engine,
 )
 from sqlalchemy.sql import func
@@ -36,6 +37,19 @@ class BodyRegionEnum(str, enum.Enum):
     lower = "lower"
     core = "core"
     cardio = "cardio"
+
+
+class SyncStatusEnum(str, enum.Enum):
+    pending = "pending"
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+
+
+class TriggeredByEnum(str, enum.Enum):
+    manual = "manual"
+    hourly = "hourly"
+    daily = "daily"
 
 
 class Activity(Base):
@@ -176,3 +190,19 @@ class WeeklyMetrics(Base):
     avg_acwr = Column(Float)
     activity_count = Column(Integer)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SyncJob(Base):
+    __tablename__ = "sync_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(20), nullable=False, default="pending")
+    activities_found = Column(Integer, nullable=True)
+    activities_synced = Column(Integer, nullable=True)
+    error_message = Column(Text, nullable=True)
+    triggered_by = Column(String(20), nullable=False)
+    next_scheduled_run = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

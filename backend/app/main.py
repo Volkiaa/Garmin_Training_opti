@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -25,6 +25,10 @@ from app.schemas.dashboard import Dashboard
 from app.schemas.common import Settings, SettingsUpdate, SyncStatus, SyncTrigger
 from app.core.fatigue import calculate_activity_fatigue_impact
 from app.core.classifiers import extract_hr_zones
+from app.core.sync_lock import acquire_sync_lock, release_sync_lock
+from app.models import SyncJob, SyncStatusEnum, TriggeredByEnum
+from app.api.websocket import websocket_sync_endpoint, manager
+from pydantic import BaseModel
 
 app = FastAPI(title="Training Optimizer API", version="0.1.0")
 
@@ -165,10 +169,31 @@ async def get_dashboard(
         readiness_category = readiness_result["category"]
         readiness_factors = readiness_result["factors"]
     else:
-        # Default to V2
-        readiness_score = metrics.readiness_score or 70
-        readiness_category = "moderate"
-        readiness_factors = metrics.readiness_factors or []
+        # V2: Calculate readiness using the V2 algorithm
+        # Get sleep hours for last 3 days for V2 algorithm
+        sleep_hours_3_days = []
+        for i in range(3):
+            check_date = today - timedelta(days=i)
+            day_health = await health_service.get_by_date(check_date)
+            if day_health and day_health.sleep_duration_hours:
+                sleep_hours_3_days.append(float(day_health.sleep_duration_hours))
+
+        readiness_result = calculate_readiness_v2(
+            hrv_today=hrv_today,
+            hrv_7day_avg=hrv_7day_avg,
+            sleep_hours=sleep_hours,
+            sleep_target=settings.sleep_target_hours,
+            sleep_score=sleep_score,
+            sleep_hours_3_days=sleep_hours_3_days,
+            body_battery_morning=body_battery,
+            recent_activities=recent_for_readiness,
+            avg_readiness_3_days=70,
+            today=datetime.now(),
+            acwr=float(metrics.acwr or 1.0),
+        )
+        readiness_score = readiness_result["score"]
+        readiness_category = readiness_result["category"]
+        readiness_factors = readiness_result["factors"]
 
     sport_readiness = evaluate_sport_readiness(
         readiness_score=int(readiness_score),
@@ -315,93 +340,154 @@ async def get_health_daily(
 
 @app.post("/api/v1/sync/trigger")
 async def trigger_sync(trigger: SyncTrigger, db: AsyncSession = Depends(get_db)):
-    sync_service = get_sync_service()
+    # Acquire advisory lock to prevent concurrent syncs
+    lock_acquired = await acquire_sync_lock(db)
+    if not lock_acquired:
+        raise HTTPException(status_code=409, detail="Sync already in progress")
 
-    if not sync_service.authenticate():
-        raise HTTPException(
-            status_code=401, detail="Failed to authenticate with Garmin"
+    sync_job = None
+    try:
+        # Create sync job record
+        from datetime import datetime
+
+        sync_job = SyncJob(
+            started_at=datetime.now(),
+            status=SyncStatusEnum.running,
+            triggered_by=TriggeredByEnum.manual,
         )
+        db.add(sync_job)
+        await db.flush()
 
-    end_date = date.today()
+        sync_service = get_sync_service()
 
-    if trigger.full_sync:
-        start_date = date(2000, 1, 1)
-        health_days = 365
-    else:
-        start_date = end_date - timedelta(days=trigger.days)
-        health_days = trigger.days
+        if not sync_service.authenticate():
+            sync_job.status = SyncStatusEnum.failed
+            sync_job.error_message = "Failed to authenticate with Garmin"
+            await db.commit()
+            raise HTTPException(
+                status_code=401, detail="Failed to authenticate with Garmin"
+            )
 
-    activities = sync_service.get_activities_by_date(start_date, end_date)
+        end_date = date.today()
 
-    activity_service = ActivityService(db)
-    health_service = HealthService(db)
-    metrics_service = MetricsService(db)
+        if trigger.full_sync:
+            start_date = date(2000, 1, 1)
+            health_days = 365
+        else:
+            start_date = end_date - timedelta(days=trigger.days)
+            health_days = trigger.days
 
-    activities_synced = 0
-    for activity_summary in activities:
-        activity_id = activity_summary.get("activityId")
-        if not activity_id:
-            continue
+        activities = sync_service.get_activities_by_date(start_date, end_date)
 
-        existing = await activity_service.get_by_garmin_id(str(activity_id))
-        if existing:
-            continue
+        activity_service = ActivityService(db)
+        health_service = HealthService(db)
+        metrics_service = MetricsService(db)
 
-        parsed = sync_service.parse_activity_data(activity_summary)
+        activities_synced = 0
+        activities_found = len(activities)
 
-        settings_result = await db.execute(select(UserSettingsModel))
-        user_settings = settings_result.scalar_one_or_none()
-        max_hr = user_settings.max_hr if user_settings else 185
+        for activity_summary in activities:
+            activity_id = activity_summary.get("activityId")
+            if not activity_id:
+                continue
 
-        discipline = classify_discipline(parsed)
-        intensity = infer_intensity_zone(parsed, max_hr)
-        body_regions = infer_body_regions(discipline)
+            existing = await activity_service.get_by_garmin_id(str(activity_id))
+            if existing:
+                continue
 
-        parsed["discipline"] = discipline
-        parsed["intensity_zone"] = intensity
-        parsed["body_regions"] = body_regions
+            parsed = sync_service.parse_activity_data(activity_summary)
 
-        if not parsed.get("training_load"):
-            from app.core.training_load import calculate_load
+            settings_result = await db.execute(select(UserSettingsModel))
+            user_settings = settings_result.scalar_one_or_none()
+            max_hr = user_settings.max_hr if user_settings else 185
 
-            parsed["training_load"] = calculate_load(parsed, max_hr)
+            discipline = classify_discipline(parsed)
+            intensity = infer_intensity_zone(parsed, max_hr)
+            body_regions = infer_body_regions(discipline)
 
-        await activity_service.create(parsed)
-        activities_synced += 1
+            parsed["discipline"] = discipline
+            parsed["intensity_zone"] = intensity
+            parsed["body_regions"] = body_regions
 
-    for day_offset in range(health_days + 1):
-        current_date = end_date - timedelta(days=day_offset)
+            if not parsed.get("training_load"):
+                from app.core.training_load import calculate_load
 
-        health_data = sync_service.get_health_data(current_date)
-        if health_data:
-            parsed_health = sync_service.parse_health_data(health_data)
+                parsed["training_load"] = calculate_load(parsed, max_hr)
 
-            avgs = await health_service.calculate_7day_averages(current_date)
-            parsed_health.update(avgs)
+            await activity_service.create(parsed)
+            activities_synced += 1
 
-            await health_service.upsert(parsed_health)
+        for day_offset in range(health_days + 1):
+            current_date = end_date - timedelta(days=day_offset)
 
-    await metrics_service.recompute_metrics(start_date, end_date)
-    await db.commit()
+            health_data = sync_service.get_health_data(current_date)
+            if health_data:
+                parsed_health = sync_service.parse_health_data(health_data)
 
-    return {
-        "status": "completed",
-        "job_id": f"sync_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-        "activities_synced": activities_synced,
-        "health_days_synced": health_days + 1,
-        "full_sync": trigger.full_sync,
-    }
+                avgs = await health_service.calculate_7day_averages(current_date)
+                parsed_health.update(avgs)
+
+                await health_service.upsert(parsed_health)
+
+        await metrics_service.recompute_metrics(start_date, end_date)
+
+        # Update sync job on success
+        sync_job.status = SyncStatusEnum.completed
+        sync_job.completed_at = datetime.now()
+        sync_job.activities_found = activities_found
+        sync_job.activities_synced = activities_synced
+        await db.commit()
+
+        return {
+            "status": "completed",
+            "job_id": f"sync_{sync_job.id}",
+            "activities_synced": activities_synced,
+            "health_days_synced": health_days + 1,
+            "full_sync": trigger.full_sync,
+        }
+
+    except Exception as e:
+        # Update sync job on failure
+        if sync_job:
+            sync_job.status = SyncStatusEnum.failed
+            sync_job.completed_at = datetime.now()
+            sync_job.error_message = str(e)
+            await db.commit()
+        raise
+
+    finally:
+        # Always release the lock
+        await release_sync_lock(db)
 
 
 @app.get("/api/v1/sync/status", response_model=SyncStatus)
-async def get_sync_status():
-    return {
-        "last_sync": None,
-        "status": "unknown",
-        "activities_synced": 0,
-        "health_days_synced": 0,
-        "errors": [],
-    }
+async def get_sync_status(db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(SyncJob)
+        .where(SyncJob.status == SyncStatusEnum.completed)
+        .order_by(SyncJob.completed_at.desc())
+        .limit(1)
+    )
+    latest_job = result.scalar_one_or_none()
+
+    if latest_job:
+        return {
+            "last_sync": latest_job.completed_at,
+            "status": "completed",
+            "activities_synced": latest_job.activities_synced or 0,
+            "health_days_synced": 0,
+            "errors": [],
+        }
+    else:
+        return {
+            "last_sync": None,
+            "status": "unknown",
+            "activities_synced": 0,
+            "health_days_synced": 0,
+            "errors": [],
+        }
 
 
 @app.get("/api/v1/garmin/profile")
@@ -684,3 +770,34 @@ async def record_feature_use(feature_name: str, db: AsyncSession = Depends(get_d
     service = FeatureFlagService(db)
     status = await service.record_feature_use(feature_name)
     return status
+
+
+@app.websocket("/api/v1/ws/sync")
+async def sync_websocket(websocket: WebSocket):
+    await websocket_sync_endpoint(websocket)
+
+
+class SyncNotifyRequest(BaseModel):
+    type: str
+    sync_timestamp: str
+    activities_synced: int = 0
+    health_days: int = 0
+
+
+@app.post("/api/v1/sync/notify")
+async def sync_notify(request: SyncNotifyRequest):
+    message = {
+        "type": "sync_update",
+        "update_type": request.type,
+        "sync_timestamp": request.sync_timestamp,
+        "activities_synced": request.activities_synced,
+        "health_days": request.health_days,
+    }
+
+    await manager.broadcast(message)
+
+    return {"status": "notified", "clients": manager.get_connection_count()}
+
+    await manager.broadcast(message)
+
+    return {"status": "notified", "clients": manager.get_connection_count()}

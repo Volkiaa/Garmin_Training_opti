@@ -39,6 +39,31 @@ services:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: training-optimizer-worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://training_optimizer:training_optimizer_password@postgres:5432/training_optimizer}
+      GARMIN_EMAIL: ${GARMIN_EMAIL}
+      GARMIN_PASSWORD: ${GARMIN_PASSWORD}
+      GARMIN_TOKEN_PATH: ${GARMIN_TOKEN_PATH:-/app/data/.garmin_tokens}
+      AUTO_SYNC_ENABLED: ${AUTO_SYNC_ENABLED:-false}
+      SYNC_HOUR: ${SYNC_HOUR:-6}
+      TZ: ${TZ:-UTC}
+      BACKEND_URL: http://backend:8000
+    volumes:
+      - ./backend:/app
+      - garmin_tokens:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    command: python -m worker.scheduler
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   garmin_tokens:

@@ -234,21 +234,37 @@ def calculate_readiness_v2(
     score = 70.0  # BASE_SCORE
     factors = []
 
-    # HRV Component (±15)
+    # HRV Component (±15) with tolerance zone
     if hrv_today is not None and hrv_7day_avg is not None and hrv_7day_avg > 0:
         hrv_deviation = (hrv_today - hrv_7day_avg) / hrv_7day_avg
-        hrv_component = max(-15.0, min(15.0, hrv_deviation * 75))
+        tolerance = 0.05
+
+        if abs(hrv_deviation) <= tolerance:
+            hrv_component = 0.0
+            hrv_status = "neutral"
+            hrv_detail = (
+                f"{hrv_today:.0f}ms vs {hrv_7day_avg:.0f}ms baseline (within ±5%)"
+            )
+        else:
+            effective_deviation = (abs(hrv_deviation) - tolerance) / (1 - tolerance)
+            effective_deviation = min(1.0, effective_deviation)
+            hrv_component = effective_deviation * 15.0
+
+            if hrv_deviation < 0:
+                hrv_component = -hrv_component
+                hrv_status = "negative"
+            else:
+                hrv_status = "positive"
+
+            hrv_detail = f"{hrv_today:.0f}ms vs {hrv_7day_avg:.0f}ms baseline ({hrv_deviation * 100:+.1f}%)"
+
         score += hrv_component
         factors.append(
             {
                 "name": "HRV",
                 "value": f"{hrv_component:+.0f}",
-                "detail": f"{hrv_today:.0f}ms vs {hrv_7day_avg:.0f}ms baseline",
-                "status": "positive"
-                if hrv_component > 0
-                else "negative"
-                if hrv_component < 0
-                else "neutral",
+                "detail": hrv_detail,
+                "status": hrv_status,
             }
         )
 

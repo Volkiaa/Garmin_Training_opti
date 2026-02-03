@@ -270,12 +270,15 @@ class GarminSyncService:
             hrv_data.get("hrvSummary", {}) if isinstance(hrv_data, dict) else {}
         )
         hrv_status = None
+        hrv_7day_avg = None
         if isinstance(hrv_summary, dict):
-            hrv_status = hrv_summary.get("lastNightAvg") or hrv_summary.get("weeklyAvg")
+            hrv_status = hrv_summary.get("lastNightAvg")
+            hrv_7day_avg = hrv_summary.get("weeklyAvg")
 
         return {
             "date": raw_health.get("date"),
             "hrv_status": hrv_status,
+            "hrv_7day_avg": hrv_7day_avg,
             "resting_hr": resting_hr,
             "sleep_duration_hours": (sleep_dto.get("sleepTimeSeconds", 0) or 0) / 3600
             if sleep_dto

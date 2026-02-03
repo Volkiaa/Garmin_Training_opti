@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import Activity, ComputedMetrics, WeeklyMetrics
+from app.models import Activity, ComputedMetrics, WeeklyMetrics, DailyHealth
 
 
 def get_week_start(d: date) -> date:
@@ -77,25 +77,31 @@ class TrendsService:
                 )
                 intensity_distribution[zone] = zone_duration / total_duration
 
-        # Get daily metrics for averages
-        daily_result = await self.db.execute(
+        computed_result = await self.db.execute(
             select(ComputedMetrics).where(
                 and_(
                     ComputedMetrics.date >= week_start, ComputedMetrics.date <= week_end
                 )
             )
         )
-        daily_metrics = daily_result.scalars().all()
+        computed_metrics = computed_result.scalars().all()
+
+        health_result = await self.db.execute(
+            select(DailyHealth).where(
+                and_(DailyHealth.date >= week_start, DailyHealth.date <= week_end)
+            )
+        )
+        daily_health = health_result.scalars().all()
 
         # Calculate averages
         avg_readiness = self._avg(
-            [m.readiness_score for m in daily_metrics if m.readiness_score]
+            [m.readiness_score for m in computed_metrics if m.readiness_score]
         )
-        avg_hrv = self._avg([m.hrv_status for m in daily_metrics if m.hrv_status])
+        avg_hrv = self._avg([h.hrv_status for h in daily_health if h.hrv_status])
         avg_sleep = self._avg(
-            [m.sleep_duration_hours for m in daily_metrics if m.sleep_duration_hours]
+            [h.sleep_duration_hours for h in daily_health if h.sleep_duration_hours]
         )
-        avg_acwr = self._avg([m.acwr for m in daily_metrics if m.acwr])
+        avg_acwr = self._avg([m.acwr for m in computed_metrics if m.acwr])
 
         # Check if record exists
         existing_result = await self.db.execute(
