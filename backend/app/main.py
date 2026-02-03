@@ -420,6 +420,64 @@ async def get_activity_hr(activity_id: int, db: AsyncSession = Depends(get_db)):
     return {"samples": hr_samples}
 
 
+@app.get("/api/v1/activities/{activity_id}/splits")
+async def get_activity_splits(activity_id: int, db: AsyncSession = Depends(get_db)):
+    from app.services.activity_service import ActivityService
+    from app.services.garmin_sync import GarminSyncService
+
+    service = ActivityService(db)
+    activity = await service.get_by_id(activity_id)
+
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    if not activity.garmin_id:
+        raise HTTPException(
+            status_code=404, detail="Garmin ID not available for this activity"
+        )
+
+    try:
+        sync_service = GarminSyncService()
+        if not sync_service.authenticate():
+            raise HTTPException(
+                status_code=401, detail="Failed to authenticate with Garmin"
+            )
+
+        details = sync_service.get_activity_details(activity.garmin_id)
+        if not details or "lapDTOs" not in details:
+            return {"splits": []}
+
+        laps = details["lapDTOs"]
+        splits = []
+
+        for lap in laps:
+            distance = lap.get("distance", 0)
+            duration = lap.get("duration", 0)
+
+            pace = None
+            if distance > 0 and duration > 0:
+                pace_decimal = (duration / 60) / (distance / 1000)
+                pace_min = int(pace_decimal)
+                pace_sec = int((pace_decimal - pace_min) * 60)
+                pace = f"{pace_min}:{pace_sec:02d}"
+
+            splits.append(
+                {
+                    "lap_number": lap.get("lapIndex"),
+                    "distance": distance,
+                    "duration": duration,
+                    "pace": pace,
+                    "hr": lap.get("averageHR"),
+                    "power": lap.get("averagePower"),
+                    "elevation": lap.get("elevationGain"),
+                }
+            )
+
+        return {"splits": splits}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching splits: {str(e)}")
+
+
 @app.get("/api/v1/health/daily", response_model=HealthMetricsList)
 async def get_health_daily(
     start_date: date, end_date: date, db: AsyncSession = Depends(get_db)
