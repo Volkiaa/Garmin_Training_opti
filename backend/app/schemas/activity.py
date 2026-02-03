@@ -23,6 +23,17 @@ class ActivityBase(BaseModel):
     hr_zone_4_minutes: Optional[float] = None
     hr_zone_5_minutes: Optional[float] = None
     notes: Optional[str] = None
+    avg_power: Optional[int] = None
+    max_power: Optional[int] = None
+    normalized_power: Optional[int] = None
+    avg_speed: Optional[float] = None
+    max_speed: Optional[float] = None
+    avg_cadence: Optional[int] = None
+    max_cadence: Optional[int] = None
+    elevation_gain: Optional[float] = None
+    elevation_loss: Optional[float] = None
+    aerobic_te: Optional[float] = None
+    anaerobic_te: Optional[float] = None
 
 
 class ActivityCreate(ActivityBase):
