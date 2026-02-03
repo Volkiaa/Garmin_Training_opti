@@ -1,14 +1,13 @@
-import { Card, CardContent } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
+import { motion } from 'framer-motion';
 import { useDashboard } from '../hooks/useDashboard';
 import { useReadinessVersion } from '../hooks/useReadinessVersion';
 import { useTriggerSync } from '../hooks/useSync';
-import { getReadinessColor, formatDuration, formatDate, getDisciplineColor, getDisciplineLabel, getIntensityLabel } from '../lib/utils';
-import { Activity, RefreshCw } from 'lucide-react';
+import { formatDuration, formatDate, getDisciplineLabel, getIntensityLabel } from '../lib/utils';
+import { Activity, RefreshCw, Zap, TrendingUp, Clock } from 'lucide-react';
 import { ReadinessToggle } from '../components/ReadinessToggle';
-import { SportReadinessGrid } from '../components/SportReadinessGrid';
-import { PhaseIndicator } from '../components/PhaseIndicator';
+import { MorphingCard, FluidButton, ReadinessGauge } from '../components/morphic';
+import { fadeInUp, staggerContainer, staggerItem } from '../lib/animations';
+import { getGlowColor, getDisciplineGlowColor } from '../lib/morphic-utils';
 
 export function Dashboard() {
   const { version, setReadinessVersion, isLoading: versionLoading } = useReadinessVersion();
@@ -18,7 +17,11 @@ export function Dashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full"
+        />
       </div>
     );
   }
@@ -26,7 +29,7 @@ export function Dashboard() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">Failed to load dashboard data</p>
+        <p className="text-red-400">Failed to load dashboard data</p>
       </div>
     );
   }
@@ -34,7 +37,7 @@ export function Dashboard() {
   if (!dashboard) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">No data available</p>
+        <p className="text-gray-400">No data available</p>
       </div>
     );
   }
@@ -42,210 +45,248 @@ export function Dashboard() {
   const { readiness, training_load, fatigue, recent_activities, week_summary } = dashboard;
 
   return (
-    <div className="space-y-6">
-      <PhaseIndicator />
-
-      <div className="flex items-center justify-between">
+    <motion.div
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+      className="space-y-6 p-6 max-w-7xl mx-auto"
+    >
+      {/* Header */}
+      <motion.div variants={staggerItem} className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            Dashboard
+          </h1>
           {!versionLoading && (
             <ReadinessToggle version={version} onChange={setReadinessVersion} />
           )}
         </div>
-        <Button
-          variant="outline"
+        <FluidButton
+          variant="secondary"
           size="sm"
           onClick={() => triggerSync.mutate({ days: 28 })}
-          disabled={triggerSync.isPending}
+          isLoading={triggerSync.isPending}
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${triggerSync.isPending ? 'animate-spin' : ''}`} />
-          Sync (28d)
-        </Button>
-      </div>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Sync
+        </FluidButton>
+      </motion.div>
 
+      {/* Main Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1">
-          <CardContent className="text-center">
-            <h2 className="text-sm font-medium text-gray-600 mb-4">Readiness Score</h2>
-            <div className="relative inline-flex items-center justify-center">
-              <svg className="w-32 h-32 transform -rotate-90">
-                <circle
-                  cx="64"
-                  cy="64"
-                  r="56"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  className="text-gray-200"
+        {/* Readiness Score */}
+        <motion.div variants={staggerItem}>
+          <MorphingCard
+            glowColor={getGlowColor(readiness.score)}
+            expandedContent={
+              <div className="space-y-2">
+                <p className="text-sm text-gray-400">Factors affecting your score:</p>
+                {readiness.factors.map((factor) => (
+                  <div key={factor.name} className="flex justify-between text-sm">
+                    <span className={factor.status === 'positive' ? 'text-green-400' : factor.status === 'negative' ? 'text-red-400' : 'text-gray-400'}>
+                      {factor.name}
+                    </span>
+                    <span className="text-gray-300">{factor.value}</span>
+                  </div>
+                ))}
+              </div>
+            }
+          >
+            <div className="text-center">
+              <h2 className="text-sm font-medium text-gray-400 mb-4">Readiness Score</h2>
+              <div className="flex justify-center">
+                <ReadinessGauge
+                  score={readiness.score}
+                  category={readiness.category}
+                  size="md"
                 />
-                <circle
-                  cx="64"
-                  cy="64"
-                  r="56"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  strokeDasharray={`${(readiness.score / 100) * 351.86} 351.86`}
-                  className={getReadinessColor(readiness.score)}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-4xl font-bold ${getReadinessColor(readiness.score)}`}>
-                  {readiness.score}
-                </span>
-                <span className="text-xs text-gray-500">/100</span>
               </div>
             </div>
-            <p className={`mt-4 text-sm font-medium ${getReadinessColor(readiness.score)}`}>
-              {readiness.category.charAt(0).toUpperCase() + readiness.category.slice(1)}
-            </p>
-          </CardContent>
-        </Card>
+          </MorphingCard>
+        </motion.div>
 
-        <Card className="md:col-span-1">
-          <CardContent>
-            <h2 className="text-sm font-medium text-gray-600 mb-4">Training Load</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Acute (7d)</span>
-                <span className="font-medium">{training_load.acute.toFixed(0)}</span>
+        {/* Training Load */}
+        <motion.div variants={staggerItem}>
+          <MorphingCard glowColor="rgba(139, 92, 246, 0.3)">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-purple-400" />
+                <h2 className="text-sm font-medium text-gray-300">Training Load</h2>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Chronic (28d)</span>
-                <span className="font-medium">{training_load.chronic.toFixed(0)}</span>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-white/5 rounded-xl">
+                  <p className="text-2xl font-bold text-white">{training_load.acute.toFixed(0)}</p>
+                  <p className="text-xs text-gray-400">Acute (7d)</p>
+                </div>
+                <div className="text-center p-3 bg-white/5 rounded-xl">
+                  <p className="text-2xl font-bold text-white">{training_load.chronic.toFixed(0)}</p>
+                  <p className="text-xs text-gray-400">Chronic (28d)</p>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">ACWR</span>
-                <Badge variant={training_load.acwr_status === 'optimal' ? 'success' : training_load.acwr_status === 'danger' ? 'danger' : 'warning'}>
+
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                <span className="text-sm text-gray-400">ACWR Ratio</span>
+                <span className={`text-lg font-bold ${
+                  training_load.acwr_status === 'optimal' ? 'text-green-400' : 
+                  training_load.acwr_status === 'danger' ? 'text-red-400' : 'text-yellow-400'
+                }`}>
                   {training_load.acwr.toFixed(2)}
-                </Badge>
+                </span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </MorphingCard>
+        </motion.div>
 
-        <Card className="md:col-span-1">
-          <CardContent>
-            <h2 className="text-sm font-medium text-gray-600 mb-4">Fatigue</h2>
-            <div className="space-y-3">
-              {Object.entries(fatigue).map(([key, value]) => (
-                <div key={key}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="capitalize text-gray-600">{key}</span>
-                    <span className="font-medium">{(value * 100).toFixed(0)}%</span>
+        {/* Fatigue */}
+        <motion.div variants={staggerItem}>
+          <MorphingCard glowColor="rgba(236, 72, 153, 0.3)">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-pink-400" />
+                <h2 className="text-sm font-medium text-gray-300">Fatigue Levels</h2>
+              </div>
+              
+              <div className="space-y-3">
+                {Object.entries(fatigue).map(([key, value]) => (
+                  <div key={key}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="capitalize text-gray-400">{key}</span>
+                      <span className="text-gray-300">{(value * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${value * 100}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                        className={`h-full rounded-full ${
+                          value > 0.7 ? 'bg-gradient-to-r from-red-500 to-pink-500' : 
+                          value > 0.5 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' : 
+                          'bg-gradient-to-r from-green-500 to-emerald-500'
+                        }`}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${value > 0.7 ? 'bg-red-500' : value > 0.5 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                      style={{ width: `${value * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </MorphingCard>
+        </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardContent>
-            <h2 className="text-sm font-medium text-gray-600 mb-3">Today&apos;s Guidance</h2>
-            <p className="text-lg font-medium text-gray-900 mb-3">{readiness.guidance.recommendation}</p>
+      {/* Guidance Card - Dynamic based on readiness */}
+      <motion.div variants={staggerItem}>
+        <MorphingCard glowColor={getGlowColor(readiness.score)}>
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-white">Today&apos;s Guidance</h2>
+            <p className={`text-xl font-medium ${
+              readiness.score >= 80 ? 'text-emerald-400' :
+              readiness.score >= 60 ? 'text-blue-400' :
+              readiness.score >= 40 ? 'text-amber-400' :
+              'text-red-400'
+            }`}>
+              {readiness.guidance.recommendation}
+            </p>
             
-            {readiness.guidance.avoid.length > 0 && (
-              <div className="mb-3">
-                <span className="text-sm text-red-600 font-medium">Avoid:</span>
-                <p className="text-sm text-gray-700">{readiness.guidance.avoid.join(', ')}</p>
-              </div>
-            )}
-            
-            {readiness.guidance.suggested.length > 0 && (
-              <div>
-                <span className="text-sm text-green-600 font-medium">Suggested:</span>
-                <p className="text-sm text-gray-700">{readiness.guidance.suggested.join(', ')}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <SportReadinessGrid sportReadiness={readiness.sport_specific || {}} />
-      </div>
-
-      <Card>
-        <CardContent>
-          <h2 className="text-sm font-medium text-gray-600 mb-3">Why This Score</h2>
-          <div className="space-y-2">
-            {readiness.factors.map((factor) => (
-              <div key={factor.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={factor.status === 'positive' ? 'text-green-600' : factor.status === 'negative' ? 'text-red-600' : 'text-gray-600'}>
-                    {factor.status === 'positive' ? '✓' : factor.status === 'negative' ? '✗' : '•'}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {readiness.guidance.avoid.length > 0 && (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                  <span className="text-sm text-red-400 font-medium flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                    Avoid:
                   </span>
-                  <span className="text-sm text-gray-700">{factor.name}</span>
+                  <p className="text-sm text-gray-300 mt-2">{readiness.guidance.avoid.join(', ')}</p>
                 </div>
-                <div className="text-right">
-                  <span className={`text-sm font-medium ${factor.status === 'positive' ? 'text-green-600' : factor.status === 'negative' ? 'text-red-600' : 'text-gray-600'}`}>
-                    {factor.value}
+              )}
+              
+              {readiness.guidance.suggested.length > 0 && (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                  <span className="text-sm text-emerald-400 font-medium flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    Suggested:
                   </span>
-                  <span className="text-xs text-gray-500 ml-2">{factor.detail}</span>
+                  <p className="text-sm text-gray-300 mt-2">{readiness.guidance.suggested.join(', ')}</p>
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </MorphingCard>
+      </motion.div>
 
-      <Card>
-        <CardContent>
-          <h2 className="text-sm font-medium text-gray-600 mb-3">Recent Activities</h2>
-          <div className="space-y-2">
-            {recent_activities.map((activity) => (
-              <div key={activity.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <div className="flex items-center gap-3">
-                  <Activity className="w-4 h-4 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {activity.activity_name || getDisciplineLabel(activity.discipline)}
+      {/* Recent Activities */}
+      <motion.div variants={staggerItem}>
+        <MorphingCard glowColor="rgba(139, 92, 246, 0.2)">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-purple-400" />
+              <h2 className="text-lg font-semibold text-white">Recent Activities</h2>
+            </div>
+            
+            <div className="space-y-2">
+              {recent_activities.slice(0, 5).map((activity, index) => (
+                <motion.div
+                  key={activity.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Activity className="w-4 h-4 text-gray-400" />
+                    <div>
+                      <p className="text-sm font-medium text-white">
+                        {activity.activity_name || getDisciplineLabel(activity.discipline)}
+                      </p>
+                      <p className="text-xs text-gray-400">{formatDate(activity.started_at)}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className="inline-flex items-center px-2.5 py-1 text-xs rounded-full bg-white/10 text-white border border-white/20"
+                      style={{
+                        boxShadow: `0 0 8px ${getDisciplineGlowColor(activity.discipline)}40`,
+                      }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full mr-1.5"
+                        style={{ backgroundColor: getDisciplineGlowColor(activity.discipline) }}
+                      />
+                      {getDisciplineLabel(activity.discipline)}
+                    </span>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {formatDuration(activity.duration_minutes)} • {getIntensityLabel(activity.intensity_zone)}
                     </p>
-                    <p className="text-xs text-gray-500">{formatDate(activity.started_at)}</p>
                   </div>
-                </div>
-                <div className="text-right">
-                  <Badge variant="default" className={getDisciplineColor(activity.discipline)}>
-                    {getDisciplineLabel(activity.discipline)}
-                  </Badge>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formatDuration(activity.duration_minutes)} • {getIntensityLabel(activity.intensity_zone)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent>
-          <h2 className="text-sm font-medium text-gray-600 mb-3">This Week</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{week_summary.total_hours.toFixed(1)}h</p>
-              <p className="text-sm text-gray-600">Total Volume</p>
-            </div>
-            {Object.entries(week_summary.by_discipline)
-              .filter(([_, hours]) => hours > 0)
-              .map(([discipline, hours]) => (
-                <div key={discipline}>
-                  <p className={`text-2xl font-bold ${getDisciplineColor(discipline).split(' ')[0]}`}>
-                    {hours.toFixed(1)}h
-                  </p>
-                  <p className="text-sm text-gray-600 capitalize">{discipline}</p>
-                </div>
+                </motion.div>
               ))}
+            </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </MorphingCard>
+      </motion.div>
+
+      {/* Week Summary */}
+      <motion.div variants={staggerItem}>
+        <MorphingCard glowColor="rgba(16, 185, 129, 0.3)">
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-white">This Week</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-white/5 rounded-xl">
+                <p className="text-3xl font-bold text-white">{week_summary.total_hours.toFixed(1)}h</p>
+                <p className="text-sm text-gray-400">Total Volume</p>
+              </div>
+              {Object.entries(week_summary.by_discipline)
+                .filter(([_, hours]) => hours > 0)
+                .slice(0, 3)
+                .map(([discipline, hours]) => (
+                  <div key={discipline} className="text-center p-4 bg-white/5 rounded-xl">
+                    <p className="text-3xl font-bold text-blue-400">{hours.toFixed(1)}h</p>
+                    <p className="text-sm text-gray-400 capitalize">{discipline}</p>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </MorphingCard>
+      </motion.div>
+    </motion.div>
   );
 }
