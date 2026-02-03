@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, WebSocket
+from fastapi import FastAPI, Depends, HTTPException, Query, WebSocket, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import date, datetime, timedelta, timezone
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from app.database import get_db
 from app.models import Activity as ActivityModel, UserSettings as UserSettingsModel
@@ -337,7 +337,7 @@ async def get_activity_gps(activity_id: int, db: AsyncSession = Depends(get_db))
     """Get GPS coordinates for an activity.
 
     Fetches from cache if available, otherwise fetches from Garmin API
-    and caches the result.
+    and caches the result. Returns empty coordinates if GPS data is not available.
     """
     from app.services.activity_service import ActivityService
     from app.services.garmin_sync import GarminSyncService
@@ -353,24 +353,30 @@ async def get_activity_gps(activity_id: int, db: AsyncSession = Depends(get_db))
     if activity.gps_polyline and activity.gps_fetched_at:
         return {"coordinates": activity.gps_polyline}
 
-    # Fetch from Garmin if we have a garmin_id
+    # Return empty coordinates if no Garmin ID (e.g., manual entries)
     if not activity.garmin_id:
-        raise HTTPException(
-            status_code=404, detail="No Garmin data available for this activity"
-        )
+        return {"coordinates": []}
 
-    sync_service = GarminSyncService()
-    gps_data = sync_service.get_activity_gps(activity.garmin_id)
+    # Try to fetch from Garmin
+    try:
+        sync_service = GarminSyncService()
+        if not sync_service.authenticate():
+            return {"coordinates": []}
 
-    if not gps_data:
-        raise HTTPException(status_code=404, detail="GPS data not available")
+        gps_data = sync_service.get_activity_gps(activity.garmin_id)
 
-    # Cache the GPS data
-    activity.gps_polyline = gps_data
-    activity.gps_fetched_at = datetime.now(timezone.utc)
-    await db.commit()
+        if not gps_data:
+            return {"coordinates": []}
 
-    return {"coordinates": gps_data}
+        # Cache the GPS data
+        activity.gps_polyline = gps_data
+        activity.gps_fetched_at = datetime.now(timezone.utc)
+        await db.commit()
+
+        return {"coordinates": gps_data}
+    except Exception:
+        # Return empty coordinates on any error
+        return {"coordinates": []}
 
 
 @app.get("/api/v1/activities/{activity_id}/hr")
@@ -800,12 +806,12 @@ async def list_events(upcoming_only: bool = False, db: AsyncSession = Depends(ge
 
 @app.post("/api/v1/events")
 async def create_event(
-    name: str,
-    event_date: date,
-    event_type: str,
-    distance: Optional[str] = None,
-    priority: str = "B",
-    notes: Optional[str] = None,
+    name: str = Form(...),
+    event_date: date = Form(...),
+    event_type: str = Form(...),
+    distance: Optional[str] = Form(None),
+    priority: str = Form("B"),
+    notes: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     from app.services.event_service import EventService
@@ -883,6 +889,26 @@ async def get_current_phase(db: AsyncSession = Depends(get_db)):
     service = PhaseService(db)
     phase = await service.get_current_phase()
     return phase
+
+
+@app.get("/api/v1/phases/current/recommendations")
+async def get_current_phase_recommendations(db: AsyncSession = Depends(get_db)):
+    from app.services.phase_service import PhaseService
+    from app.services.event_service import EventService
+
+    phase_service = PhaseService(db)
+    event_service = EventService(db)
+
+    current = await phase_service.get_current_phase()
+    if not current or not current.get("event"):
+        return {"phase": None, "recommendations": None}
+
+    event = await event_service.get_event(current["event"]["id"])
+    recommendations = await phase_service.get_phase_recommendations(
+        current["phase"], event.event_type
+    )
+
+    return {"phase": current, "recommendations": recommendations}
 
 
 @app.get("/api/v1/trends/weekly")
@@ -997,6 +1023,321 @@ async def sync_notify(request: SyncNotifyRequest):
 
     return {"status": "notified", "clients": manager.get_connection_count()}
 
-    await manager.broadcast(message)
 
-    return {"status": "notified", "clients": manager.get_connection_count()}
+# Workout API Endpoints
+
+
+class WorkoutCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    discipline: str
+    duration_minutes: int
+    target_intensity: str
+    structure: Dict[str, Any]
+    tags: Optional[List[str]] = None
+
+
+class WorkoutResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    discipline: str
+    duration_minutes: int
+    target_intensity: str
+    structure: Dict[str, Any]
+    tags: List[str]
+    created_at: str
+
+
+class PlannedWorkoutCreate(BaseModel):
+    workout_id: Optional[int] = None
+    planned_date: date
+    planned_time: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class PlannedWorkoutResponse(BaseModel):
+    id: int
+    workout_id: Optional[int]
+    planned_date: str
+    planned_time: Optional[str]
+    status: str
+    notes: Optional[str]
+    completed_activity_id: Optional[int]
+    created_at: str
+
+
+@app.get("/api/v1/workouts")
+async def list_workouts(
+    discipline: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all workout templates."""
+    from app.models import Workout
+    from sqlalchemy import select
+
+    query = select(Workout)
+    if discipline:
+        query = query.where(Workout.discipline == discipline)
+
+    result = await db.execute(query.order_by(Workout.name))
+    workouts = result.scalars().all()
+
+    return [
+        {
+            "id": w.id,
+            "name": w.name,
+            "description": w.description,
+            "discipline": w.discipline,
+            "duration_minutes": w.duration_minutes,
+            "target_intensity": w.target_intensity,
+            "structure": w.structure,
+            "tags": w.tags or [],
+            "created_at": w.created_at.isoformat() if w.created_at else None,
+        }
+        for w in workouts
+    ]
+
+
+@app.post("/api/v1/workouts")
+async def create_workout(
+    workout: WorkoutCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new workout template."""
+    from app.models import Workout
+
+    new_workout = Workout(
+        name=workout.name,
+        description=workout.description,
+        discipline=workout.discipline,
+        duration_minutes=workout.duration_minutes,
+        target_intensity=workout.target_intensity,
+        structure=workout.structure,
+        tags=workout.tags or [],
+    )
+
+    db.add(new_workout)
+    await db.commit()
+    await db.refresh(new_workout)
+
+    return {
+        "id": new_workout.id,
+        "name": new_workout.name,
+        "description": new_workout.description,
+        "discipline": new_workout.discipline,
+        "duration_minutes": new_workout.duration_minutes,
+        "target_intensity": new_workout.target_intensity,
+        "structure": new_workout.structure,
+        "tags": new_workout.tags or [],
+        "created_at": new_workout.created_at.isoformat()
+        if new_workout.created_at
+        else None,
+    }
+
+
+@app.get("/api/v1/workouts/{workout_id}")
+async def get_workout(workout_id: int, db: AsyncSession = Depends(get_db)):
+    """Get a single workout template."""
+    from app.models import Workout
+    from sqlalchemy import select
+
+    result = await db.execute(select(Workout).where(Workout.id == workout_id))
+    workout = result.scalar_one_or_none()
+
+    if not workout:
+        raise HTTPException(status_code=404, detail="Workout not found")
+
+    return {
+        "id": workout.id,
+        "name": workout.name,
+        "description": workout.description,
+        "discipline": workout.discipline,
+        "duration_minutes": workout.duration_minutes,
+        "target_intensity": workout.target_intensity,
+        "structure": workout.structure,
+        "tags": workout.tags or [],
+        "created_at": workout.created_at.isoformat() if workout.created_at else None,
+    }
+
+
+@app.patch("/api/v1/workouts/{workout_id}")
+async def update_workout(
+    workout_id: int,
+    workout_data: Dict[str, Any],
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a workout template."""
+    from app.models import Workout
+    from sqlalchemy import select
+
+    result = await db.execute(select(Workout).where(Workout.id == workout_id))
+    workout = result.scalar_one_or_none()
+
+    if not workout:
+        raise HTTPException(status_code=404, detail="Workout not found")
+
+    for field, value in workout_data.items():
+        if hasattr(workout, field) and value is not None:
+            setattr(workout, field, value)
+
+    await db.commit()
+    await db.refresh(workout)
+
+    return {
+        "id": workout.id,
+        "name": workout.name,
+        "description": workout.description,
+        "discipline": workout.discipline,
+        "duration_minutes": workout.duration_minutes,
+        "target_intensity": workout.target_intensity,
+        "structure": workout.structure,
+        "tags": workout.tags or [],
+        "created_at": workout.created_at.isoformat() if workout.created_at else None,
+    }
+
+
+@app.delete("/api/v1/workouts/{workout_id}")
+async def delete_workout(workout_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete a workout template."""
+    from app.models import Workout
+    from sqlalchemy import select, delete
+
+    result = await db.execute(select(Workout).where(Workout.id == workout_id))
+    workout = result.scalar_one_or_none()
+
+    if not workout:
+        raise HTTPException(status_code=404, detail="Workout not found")
+
+    await db.execute(delete(Workout).where(Workout.id == workout_id))
+    await db.commit()
+
+    return {"deleted": True}
+
+
+@app.get("/api/v1/planned-workouts")
+async def list_planned_workouts(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """List planned workouts with optional date range filter."""
+    from app.models import PlannedWorkout
+    from sqlalchemy import select
+
+    query = select(PlannedWorkout)
+
+    if start_date:
+        query = query.where(PlannedWorkout.planned_date >= start_date)
+    if end_date:
+        query = query.where(PlannedWorkout.planned_date <= end_date)
+
+    result = await db.execute(query.order_by(PlannedWorkout.planned_date))
+    planned = result.scalars().all()
+
+    return [
+        {
+            "id": p.id,
+            "workout_id": p.workout_id,
+            "planned_date": p.planned_date.isoformat(),
+            "planned_time": p.planned_time,
+            "status": p.status,
+            "notes": p.notes,
+            "completed_activity_id": p.completed_activity_id,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        }
+        for p in planned
+    ]
+
+
+@app.post("/api/v1/planned-workouts")
+async def create_planned_workout(
+    planned: PlannedWorkoutCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Plan a workout on the calendar."""
+    from app.models import PlannedWorkout
+
+    new_planned = PlannedWorkout(
+        workout_id=planned.workout_id,
+        planned_date=planned.planned_date,
+        planned_time=planned.planned_time,
+        notes=planned.notes,
+        status="planned",
+    )
+
+    db.add(new_planned)
+    await db.commit()
+    await db.refresh(new_planned)
+
+    return {
+        "id": new_planned.id,
+        "workout_id": new_planned.workout_id,
+        "planned_date": new_planned.planned_date.isoformat(),
+        "planned_time": new_planned.planned_time,
+        "status": new_planned.status,
+        "notes": new_planned.notes,
+        "completed_activity_id": new_planned.completed_activity_id,
+        "created_at": new_planned.created_at.isoformat()
+        if new_planned.created_at
+        else None,
+    }
+
+
+@app.patch("/api/v1/planned-workouts/{planned_id}")
+async def update_planned_workout(
+    planned_id: int,
+    planned_data: Dict[str, Any],
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a planned workout."""
+    from app.models import PlannedWorkout
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(PlannedWorkout).where(PlannedWorkout.id == planned_id)
+    )
+    planned = result.scalar_one_or_none()
+
+    if not planned:
+        raise HTTPException(status_code=404, detail="Planned workout not found")
+
+    for field, value in planned_data.items():
+        if hasattr(planned, field) and value is not None:
+            if field == "planned_date":
+                value = date.fromisoformat(value) if isinstance(value, str) else value
+            setattr(planned, field, value)
+
+    await db.commit()
+    await db.refresh(planned)
+
+    return {
+        "id": planned.id,
+        "workout_id": planned.workout_id,
+        "planned_date": planned.planned_date.isoformat(),
+        "planned_time": planned.planned_time,
+        "status": planned.status,
+        "notes": planned.notes,
+        "completed_activity_id": planned.completed_activity_id,
+        "created_at": planned.created_at.isoformat() if planned.created_at else None,
+    }
+
+
+@app.delete("/api/v1/planned-workouts/{planned_id}")
+async def delete_planned_workout(planned_id: int, db: AsyncSession = Depends(get_db)):
+    """Remove a planned workout from the calendar."""
+    from app.models import PlannedWorkout
+    from sqlalchemy import select, delete
+
+    result = await db.execute(
+        select(PlannedWorkout).where(PlannedWorkout.id == planned_id)
+    )
+    planned = result.scalar_one_or_none()
+
+    if not planned:
+        raise HTTPException(status_code=404, detail="Planned workout not found")
+
+    await db.execute(delete(PlannedWorkout).where(PlannedWorkout.id == planned_id))
+    await db.commit()
+
+    return {"deleted": True}
