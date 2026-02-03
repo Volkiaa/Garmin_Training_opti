@@ -147,23 +147,73 @@ class GarminSyncService:
 
             # Extract GPS data from geoPolyline
             geo_polyline = details.get("geoPolyline", [])
-            if not geo_polyline:
-                return None
+            if geo_polyline:
+                gps_points = []
+                for point in geo_polyline:
+                    gps_points.append(
+                        {
+                            "latitude": point.get("latitude"),
+                            "longitude": point.get("longitude"),
+                            "altitude": point.get("altitude"),
+                            "time": point.get("time"),
+                        }
+                    )
+                return gps_points
 
-            gps_points = []
-            for point in geo_polyline:
-                gps_points.append(
-                    {
-                        "latitude": point.get("latitude"),
-                        "longitude": point.get("longitude"),
-                        "altitude": point.get("altitude"),
-                        "time": point.get("time"),
-                    }
-                )
+            # If no geoPolyline, try fetching from TCX file
+            return self._get_gps_from_tcx(activity_id)
 
-            return gps_points
         except Exception as e:
             print(f"Error fetching GPS for activity {activity_id}: {e}")
+            return None
+
+    def _get_gps_from_tcx(self, activity_id: str) -> Optional[List[Dict[str, Any]]]:
+        """Extract GPS coordinates from TCX file."""
+        import xml.etree.ElementTree as ET
+
+        try:
+            tcx_data = self.client.download_activity(
+                activity_id, self.client.ActivityDownloadFormat.TCX
+            )
+
+            if not tcx_data:
+                return None
+
+            root = ET.fromstring(tcx_data)
+
+            # TCX namespace
+            ns = {"": "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"}
+
+            # Find all trackpoints
+            trackpoints = root.findall(".//Trackpoint", ns)
+
+            gps_points = []
+            for tp in trackpoints:
+                pos = tp.find("Position", ns)
+                if pos is not None:
+                    lat_elem = pos.find("LatitudeDegrees", ns)
+                    lon_elem = pos.find("LongitudeDegrees", ns)
+                    alt_elem = tp.find("AltitudeMeters", ns)
+                    time_elem = tp.find("Time", ns)
+
+                    if lat_elem is not None and lon_elem is not None:
+                        gps_points.append(
+                            {
+                                "latitude": float(lat_elem.text),
+                                "longitude": float(lon_elem.text),
+                                "altitude": float(alt_elem.text)
+                                if alt_elem is not None
+                                else None,
+                                "time": time_elem.text
+                                if time_elem is not None
+                                else None,
+                            }
+                        )
+
+            return gps_points if gps_points else None
+
+        except Exception as e:
+            print(f"Error parsing TCX for activity {activity_id}: {e}")
             return None
 
     def get_health_data(self, target_date: date) -> Dict[str, Any]:
@@ -256,11 +306,11 @@ class GarminSyncService:
             "avg_hr": summary.get("averageHR"),
             "max_hr": summary.get("maxHR"),
             "distance_meters": summary.get("distance"),
-            "hr_zone_1_minutes": None,
-            "hr_zone_2_minutes": None,
-            "hr_zone_3_minutes": None,
-            "hr_zone_4_minutes": None,
-            "hr_zone_5_minutes": None,
+            "hr_zone_1_minutes": (raw_activity.get("hrTimeInZone_1", 0) or 0) / 60,
+            "hr_zone_2_minutes": (raw_activity.get("hrTimeInZone_2", 0) or 0) / 60,
+            "hr_zone_3_minutes": (raw_activity.get("hrTimeInZone_3", 0) or 0) / 60,
+            "hr_zone_4_minutes": (raw_activity.get("hrTimeInZone_4", 0) or 0) / 60,
+            "hr_zone_5_minutes": (raw_activity.get("hrTimeInZone_5", 0) or 0) / 60,
             "raw_data": raw_activity,
         }
 
